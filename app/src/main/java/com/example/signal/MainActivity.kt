@@ -6,25 +6,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
-import androidx.work.*
 import com.example.signal.data.repository.OnboardingRepository
 import com.example.signal.ui.navigation.MainNavigation
 import com.example.signal.ui.onboarding.OnboardingScreen
@@ -40,7 +34,6 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var onboardingRepository: OnboardingRepository
 
-    // ── Calendar permission request ────────────────────────────────────────────
     private val calendarPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
             val granted = grants[Manifest.permission.WRITE_CALENDAR] == true
@@ -51,28 +44,31 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Kick off daily overdue scan
         WorkManagerHelper.scheduleOverdueScan(applicationContext)
 
-        // Request calendar permissions only if not already granted
-        val hasRead = androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        val hasWrite = androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        
+        val hasRead  = androidx.core.content.ContextCompat.checkSelfPermission(
+            this, Manifest.permission.READ_CALENDAR
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val hasWrite = androidx.core.content.ContextCompat.checkSelfPermission(
+            this, Manifest.permission.WRITE_CALENDAR
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
         if (!hasRead || !hasWrite) {
             calendarPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.READ_CALENDAR,
-                    Manifest.permission.WRITE_CALENDAR
-                )
+                arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
             )
         }
 
         setContent {
-            SignalTheme {
-                val onboardingDone by produceState<Boolean?>(initialValue = null, key1 = onboardingRepository) {
-                    onboardingRepository.onboardingCompleted.collect { value = it }
-                }
+            val isDark by onboardingRepository.isDarkTheme.collectAsState(initial = true)
+            val onboardingDone by produceState<Boolean?>(
+                initialValue  = null,
+                key1          = onboardingRepository
+            ) {
+                onboardingRepository.onboardingCompleted.collect { value = it }
+            }
 
+            SignalTheme(darkTheme = isDark) {
                 when (onboardingDone) {
                     null  -> LaunchSplash()
                     true  -> MainNavigation()
@@ -89,29 +85,59 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun LaunchSplash() {
-    val gradient = Brush.verticalGradient(colors = listOf(Color(0xFF0D0D1A), Color(0xFF1A1A2E)))
+    val cs = MaterialTheme.colorScheme
+    val infiniteTransition = rememberInfiniteTransition(label = "splash_pulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f, targetValue = 1f, label = "alpha",
+        animationSpec = infiniteRepeatable(tween(900, easing = EaseInOut), RepeatMode.Reverse)
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(gradient),
+            .background(cs.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            CircularProgressIndicator(color = Color(0xFF6C63FF))
-            Text(
-                text = "SIGNAL",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Preparing your workspace...",
-                color = Color.White.copy(alpha = 0.65f),
-                style = MaterialTheme.typography.bodyMedium
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = cs.primaryContainer,
+                modifier = Modifier.size(72.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    Icon(
+                        imageVector = Icons.Outlined.AutoAwesome,
+                        contentDescription = null,
+                        tint = cs.primary,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text  = "SIGNAL",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = cs.onBackground,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text  = "Preparing your workspace…",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurfaceVariant.copy(alpha = alpha)
+                )
+            }
+
+            CircularProgressIndicator(
+                color     = cs.primary,
+                modifier  = Modifier.size(24.dp),
+                strokeWidth = 2.dp
             )
         }
     }

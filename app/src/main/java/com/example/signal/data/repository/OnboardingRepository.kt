@@ -21,14 +21,22 @@ class OnboardingRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val onboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
+    private val isDarkThemeKey         = booleanPreferencesKey("is_dark_theme")
 
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data
         .catch { emit(emptyPreferences()) }
-        .map { preferences: Preferences -> preferences[onboardingCompletedKey] ?: false }
+        .map { it[onboardingCompletedKey] ?: false }
+
+    /** Defaults to true (dark) — can be toggled by the user in Settings. */
+    val isDarkTheme: Flow<Boolean> = context.dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[isDarkThemeKey] ?: true }
 
     suspend fun setOnboardingCompleted(completed: Boolean) {
-        context.dataStore.edit { preferences ->
-            preferences[onboardingCompletedKey] = completed
-        }
+        context.dataStore.edit { it[onboardingCompletedKey] = completed }
+    }
+
+    suspend fun setDarkTheme(dark: Boolean) {
+        context.dataStore.edit { it[isDarkThemeKey] = dark }
     }
 }

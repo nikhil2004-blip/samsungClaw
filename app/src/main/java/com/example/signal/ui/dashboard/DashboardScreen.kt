@@ -2,179 +2,337 @@ package com.example.signal.ui.dashboard
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.signal.ui.theme.*
 
 @Composable
 fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val cs = MaterialTheme.colorScheme
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0D0D1A))
+            .background(cs.background)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Header
+        // ── Header ─────────────────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Your Week", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            IconButton(onClick = { viewModel.loadStats() }) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color(0xFF6C63FF))
+            Column {
+                Text(
+                    text  = "Insights",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = cs.onBackground
+                )
+                Text(
+                    text  = "Your productivity at a glance",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant
+                )
+            }
+            IconButton(
+                onClick = { viewModel.loadStats() },
+                colors  = IconButtonDefaults.iconButtonColors(
+                    containerColor = cs.surfaceVariant
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Refresh,
+                    contentDescription = "Refresh",
+                    tint = cs.onSurfaceVariant
+                )
             }
         }
 
         if (state.isLoading) {
-            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFF6C63FF))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = cs.primary, strokeWidth = 2.dp)
             }
         } else {
-            // ── Today at a Glance ────────────────────────────────────────────
-            Text("Today at a Glance", color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp, letterSpacing = 1.sp)
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(Modifier.weight(1f), "📥", "Captured", state.todayTotal.toString(), Color(0xFF6C63FF))
-                StatCard(Modifier.weight(1f), "✅", "Actioned", state.todayActioned.toString(), Color(0xFF4CAF50))
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(Modifier.weight(1f), "📅", "Scheduled", state.todayScheduled.toString(), Color(0xFF2196F3))
-                StatCard(Modifier.weight(1f), "❌", "Ignored", state.todayIgnored.toString(), Color(0xFFFF4444))
+            // ── Today at a Glance ──────────────────────────────────────────────
+            SectionLabel("Today at a glance")
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon     = Icons.Outlined.MoveToInbox,
+                        label    = "Captured",
+                        value    = state.todayTotal.toString(),
+                        accentColor = cs.primary
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon     = Icons.Outlined.CheckCircle,
+                        label    = "Actioned",
+                        value    = state.todayActioned.toString(),
+                        accentColor = Emerald500
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon     = Icons.Outlined.CalendarToday,
+                        label    = "Scheduled",
+                        value    = state.todayScheduled.toString(),
+                        accentColor = Blue500
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        icon     = Icons.Outlined.RemoveCircleOutline,
+                        label    = "Ignored",
+                        value    = state.todayIgnored.toString(),
+                        accentColor = Rose500
+                    )
+                }
             }
 
-            // ── Overdue ───────────────────────────────────────────────────────
+            // ── Overdue alert ──────────────────────────────────────────────────
             if (state.overdueCount > 0) {
                 Surface(
-                    color = Color(0xFFFF4444).copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFFFF4444).copy(alpha = 0.5f))
+                    shape  = RoundedCornerShape(14.dp),
+                    color  = Rose500.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, Rose500.copy(alpha = 0.30f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(14.dp),
+                        modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Text("⚠️", fontSize = 20.sp)
-                        Column {
-                            Text("${state.overdueCount} Overdue Task(s)", color = Color(0xFFFF4444), fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("These tasks need immediate attention", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Rose500.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Outlined.Warning,
+                                contentDescription = null,
+                                tint = Rose500,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "${state.overdueCount} Overdue Task${if (state.overdueCount > 1) "s" else ""}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Rose500,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "Needs immediate attention",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = cs.onSurfaceVariant
+                            )
                         }
                     }
                 }
             }
 
-            // ── Streak ────────────────────────────────────────────────────────
+            // ── Streak ─────────────────────────────────────────────────────────
             Surface(
-                color = Color(0xFF1A1A2E),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Color(0xFFFF8C00).copy(alpha = 0.3f))
+                shape  = RoundedCornerShape(14.dp),
+                color  = cs.surface,
+                border = BorderStroke(1.dp, cs.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("🔥", fontSize = 36.sp)
-                    Column {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(Amber500.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Whatshot,
+                            contentDescription = null,
+                            tint = Amber500,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                    Column(Modifier.weight(1f)) {
                         Text(
                             "${state.streakDays} Day Streak",
-                            color = Color(0xFFFF8C00),
-                            fontSize = 18.sp,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Amber500,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "Days with zero ignored critical tasks",
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontSize = 12.sp
+                            "Zero ignored critical tasks",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = cs.onSurfaceVariant
                         )
+                    }
+                    Text(
+                        "🔥",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
+            }
+
+            // ── Weekly Activity ────────────────────────────────────────────────
+            SectionLabel("Weekly activity")
+
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = cs.surface,
+                border = BorderStroke(1.dp, cs.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    WeeklyBarChart(
+                        data        = state.weeklyData,
+                        labelColor  = cs.onSurfaceVariant,
+                        modifier    = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                    )
+
+                    HorizontalDivider(color = cs.outlineVariant)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        LegendDot(Emerald500, "Actioned")
+                        LegendDot(Blue500,    "Scheduled")
+                        LegendDot(Rose500,    "Ignored")
                     }
                 }
             }
 
-            // ── Weekly Chart ──────────────────────────────────────────────────
-            Text("Weekly Activity", color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp, letterSpacing = 1.sp)
-
-            Surface(
-                color = Color(0xFF1A1A2E),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                WeeklyBarChart(
-                    data = state.weeklyData,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .padding(16.dp)
-                )
-            }
-
-            // Legend
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                LegendDot(Color(0xFF4CAF50), "Actioned")
-                LegendDot(Color(0xFF2196F3), "Scheduled")
-                LegendDot(Color(0xFFFF4444), "Ignored")
-            }
-
-            // ── Top Avoided ───────────────────────────────────────────────────
+            // ── Most Avoided ───────────────────────────────────────────────────
             if (state.topIgnoredCategories.isNotEmpty()) {
-                Text("Most Avoided", color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp, letterSpacing = 1.sp)
+                SectionLabel("Most avoided")
+
                 Surface(
-                    color = Color(0xFF1A1A2E),
-                    shape = RoundedCornerShape(12.dp)
+                    shape  = RoundedCornerShape(14.dp),
+                    color  = cs.surface,
+                    border = BorderStroke(1.dp, cs.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("You keep ignoring these:", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                    Column(
+                        Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         state.topIgnoredCategories.forEachIndexed { i, cat ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("${i + 1}. ${cat.category.lowercase().replaceFirstChar { it.uppercase() }}", color = Color.White, fontSize = 14.sp)
-                                Text("${cat.cnt} times", color = Color(0xFFFF4444), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text  = "${i + 1}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = cs.onSurfaceVariant,
+                                        modifier = Modifier.width(16.dp)
+                                    )
+                                    Text(
+                                        text  = cat.category.lowercase().replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = cs.onSurface
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = Rose500.copy(alpha = 0.10f)
+                                ) {
+                                    Text(
+                                        "${cat.cnt}×",
+                                        style  = MaterialTheme.typography.labelMedium,
+                                        color  = Rose500,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                            if (i < state.topIgnoredCategories.lastIndex) {
+                                HorizontalDivider(color = cs.outlineVariant)
                             }
                         }
                     }
                 }
             }
 
-            // ── AI Insight ────────────────────────────────────────────────────
+            // ── AI Insight ─────────────────────────────────────────────────────
             Surface(
-                color = Color(0xFF6C63FF).copy(alpha = 0.1f),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Color(0xFF6C63FF).copy(alpha = 0.3f))
+                shape  = RoundedCornerShape(14.dp),
+                color  = cs.primaryContainer.copy(alpha = 0.45f),
+                border = BorderStroke(1.dp, cs.primary.copy(alpha = 0.20f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("🤖", fontSize = 20.sp)
-                    Column {
-                        Text("AI Behavioral Insight", color = Color(0xFF9F97FF), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(4.dp))
+                Row(
+                    Modifier.padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(cs.primary.copy(alpha = 0.14f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.AutoAwesome,
+                            contentDescription = null,
+                            tint = cs.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "AI Insight",
+                            style      = MaterialTheme.typography.titleSmall,
+                            color      = cs.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
                         val insightText = when {
                             state.todayIgnored > state.todayActioned ->
-                                "You're deferring more than acting today. Try the 2-minute rule: if it takes less than 2 minutes, do it now."
+                                "You're deferring more than acting today. Try the 2-minute rule — if it takes less than 2 minutes, do it now."
                             state.streakDays >= 3 ->
                                 "Great momentum! You've maintained a ${state.streakDays}-day streak. Keep enforcing your decisions."
                             state.overdueCount > 2 ->
@@ -182,83 +340,155 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
                             else ->
                                 "Stay consistent. Every enforced decision builds your accountability habit."
                         }
-                        Text(insightText, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp, lineHeight = 20.sp)
+                        Text(
+                            insightText,
+                            style  = MaterialTheme.typography.bodyMedium,
+                            color  = cs.onSurfaceVariant,
+                            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
+                        )
                     }
                 }
             }
 
-            Spacer(Modifier.height(80.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
 @Composable
-private fun StatCard(modifier: Modifier, emoji: String, label: String, value: String, color: Color) {
+private fun SectionLabel(text: String) {
+    Text(
+        text       = text.uppercase(),
+        style      = MaterialTheme.typography.labelMedium,
+        color      = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified
+    )
+}
+
+@Composable
+private fun StatCard(
+    modifier: Modifier,
+    icon: ImageVector,
+    label: String,
+    value: String,
+    accentColor: Color
+) {
+    val cs = MaterialTheme.colorScheme
     Surface(
         modifier = modifier,
-        color = Color(0xFF1A1A2E),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.25f))
+        color    = cs.surface,
+        shape    = RoundedCornerShape(14.dp),
+        border   = BorderStroke(1.dp, cs.outlineVariant)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(emoji, fontSize = 22.sp)
-            Text(value, color = color, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text(label, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accentColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Text(
+                text  = value,
+                style = MaterialTheme.typography.headlineSmall,
+                color = accentColor,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text  = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = cs.onSurfaceVariant
+            )
         }
     }
 }
 
 @Composable
 private fun LegendDot(color: Color, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(Modifier.size(10.dp).background(color, RoundedCornerShape(2.dp)))
-        Text(label, color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Text(
+            text  = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
-private fun WeeklyBarChart(data: List<DayStats>, modifier: Modifier = Modifier) {
+private fun WeeklyBarChart(
+    data: List<DayStats>,
+    labelColor: Color,
+    modifier: Modifier = Modifier
+) {
     if (data.isEmpty()) return
 
-    Canvas(modifier = modifier) {
-        val barWidth   = size.width / (data.size * 3f)
-        val maxVal     = data.maxOf { it.actioned + it.scheduled + it.ignored }.coerceAtLeast(1)
-        val chartHeight = size.height - 30.dp.toPx()
+    val emeraldArgb = Emerald500.toArgb()
+    val blueArgb    = Blue500.toArgb()
+    val roseArgb    = Rose500.toArgb()
+    val labelArgb   = labelColor.toArgb()
+
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val barWidth    = size.width / (data.size * 3.2f)
+        val maxVal      = data.maxOf { it.actioned + it.scheduled + it.ignored }.coerceAtLeast(1)
+        val chartHeight = size.height - 28.dp.toPx()
+        val cornerRadius = 4.dp.toPx()
 
         data.forEachIndexed { i, day ->
-            val groupX = i * (size.width / data.size)
-            val total  = (day.actioned + day.scheduled + day.ignored).toFloat()
+            val groupX = i * (size.width / data.size) + barWidth * 0.6f
             var yOffset = chartHeight
 
-            // stacked segments
             listOf(
-                Pair(day.actioned,  android.graphics.Color.parseColor("#4CAF50")),
-                Pair(day.scheduled, android.graphics.Color.parseColor("#2196F3")),
-                Pair(day.ignored,   android.graphics.Color.parseColor("#FF4444"))
-            ).forEach { (count, colorInt) ->
+                Pair(day.actioned,  emeraldArgb),
+                Pair(day.scheduled, blueArgb),
+                Pair(day.ignored,   roseArgb)
+            ).forEachIndexed { segIndex, (count, colorInt) ->
                 if (count > 0) {
                     val barH = (count / maxVal.toFloat()) * chartHeight
-                    drawRect(
-                        color  = Color(colorInt),
-                        topLeft = Offset(groupX + barWidth / 2, yOffset - barH),
-                        size   = androidx.compose.ui.geometry.Size(barWidth, barH)
+                    val isTop = segIndex == 0
+                    drawRoundRect(
+                        color       = Color(colorInt),
+                        topLeft     = Offset(groupX, yOffset - barH),
+                        size        = androidx.compose.ui.geometry.Size(barWidth, barH),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                            if (isTop) cornerRadius else 0f,
+                            if (isTop) cornerRadius else 0f
+                        )
                     )
                     yOffset -= barH
                 }
             }
 
-            // Day label
             drawContext.canvas.nativeCanvas.drawText(
                 day.label,
-                groupX + barWidth,
+                groupX + barWidth / 2,
                 size.height,
                 android.graphics.Paint().apply {
-                    color     = android.graphics.Color.argb(150, 255, 255, 255)
-                    textSize  = 28f
+                    color     = labelArgb
+                    textSize  = 26f
                     textAlign = android.graphics.Paint.Align.CENTER
+                    isAntiAlias = true
                 }
             )
         }
