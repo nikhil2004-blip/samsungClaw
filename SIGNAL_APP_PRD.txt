@@ -1,0 +1,1179 @@
+================================================================================
+        SIGNAL — PRODUCT REQUIREMENTS DOCUMENT (PRD)
+        AI-Powered Notification Intelligence & Decision Enforcement System
+        Android Application — Hackathon Build
+================================================================================
+
+Document Version  : 1.0
+Prepared By       : Team BBBY — MS Ramaiah Institute of Technology
+Target Platform   : Android (API 26+)
+Build Duration    : 24 Hours
+AI Engine         : Groq API (llama-3.3-70b-versatile)
+Architecture      : MVVM + Clean Architecture
+Language          : Kotlin + Jetpack Compose
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+
+1.  Executive Summary
+2.  Problem Statement
+3.  Project Objectives
+4.  System Philosophy & Behavioral Design
+5.  Target Users
+6.  Core Features & Functional Requirements
+7.  Technical Architecture
+8.  Tech Stack
+9.  API Specifications (Groq)
+10. Data Models & Database Schema
+11. Screen-by-Screen UI Specifications
+12. Automation Engine
+13. Permissions & Security
+14. Build Order & 24-Hour Timeline
+15. Demo Flow for Judges
+16. Cursor/Windsurf Prompts (Ready to Use)
+17. Non-Functional Requirements
+18. Known Limitations & Future Scope
+
+================================================================================
+1. EXECUTIVE SUMMARY
+================================================================================
+
+SIGNAL is an Android application that intercepts all incoming notifications,
+classifies them using Groq AI, and enforces user decision-making on high-priority
+signals. Unlike conventional notification managers or to-do apps, SIGNAL does not
+passively organize information — it actively prevents important tasks from being
+dismissed without conscious acknowledgment.
+
+The core innovation is a Decision Enforcement Layer: a mandatory overlay that
+requires the user to choose an action (Do Now / Schedule / Delegate / Ignore with
+reason) before they can continue using their phone. This transforms smartphones
+from passive information delivery devices into active behavioral guidance systems.
+
+================================================================================
+2. PROBLEM STATEMENT
+================================================================================
+
+2.1 The Modern Notification Paradox
+-------------------------------------
+Smartphones are the most powerful personal devices ever created. Yet despite
+integrating communication, scheduling, work, and learning into a single system,
+users consistently fail to act on important information they receive.
+
+A typical user receives:
+  - Messages from multiple platforms (WhatsApp, Gmail, Slack, Teams)
+  - Deadline and assignment reminders
+  - Meeting alerts and calendar notifications
+  - Promotional and low-priority app updates
+
+All of these arrive through a single, flat notification layer — with no
+differentiation between a discount coupon and a critical assignment deadline.
+
+2.2 The Core Structural Problem
+---------------------------------
+Current notification systems treat all information identically. A promotional
+notification and a project deadline notification appear in the same format,
+at the same priority level, with the same dismissal mechanism (swipe away).
+
+This creates a fundamental issue: important signals are indistinguishable
+from noise.
+
+2.3 Human Behavioral Consequences
+------------------------------------
+From a behavioral science perspective:
+  - Humans are not designed to process high-volume information streams
+  - When overwhelmed, users delay decisions, ignore messages, rely on memory
+  - This creates the pattern: Notification → Seen → Deferred → Forgotten
+
+This is not a technology failure. It is a human-system interaction failure.
+
+2.4 Why Existing Solutions Are Insufficient
+---------------------------------------------
+Notification Managers:
+  - Organize or group notifications
+  - Do NOT interpret meaning
+  - Do NOT enforce action
+
+Task Management Apps (Todoist, Notion, etc.):
+  - Require manual entry
+  - Depend entirely on user discipline
+  - Are disconnected from real-time notification inputs
+
+AI Assistants (Google Assistant, Siri):
+  - Provide insights only when asked
+  - Do not operate continuously in the background
+  - Do not enforce decisions
+
+KEY LIMITATION ACROSS ALL SYSTEMS: They assist users but do not change
+user behavior.
+
+2.5 The Real Gap
+------------------
+The missing layer in current systems is Decision Enforcement.
+
+Today's systems:
+  - Deliver information
+  - Provide optional assistance
+
+But they do NOT:
+  - Ensure a user acknowledges important tasks
+  - Ensure a decision is made
+  - Ensure action follows
+
+================================================================================
+3. PROJECT OBJECTIVES
+================================================================================
+
+This project aims to build a system that:
+
+  1. Identifies important signals within all incoming notifications
+  2. Converts them into structured, actionable tasks using AI
+  3. Forces the user to make an explicit decision (cannot be ignored)
+  4. Tracks outcomes and enforces follow-through via scheduled re-surfacing
+  5. Provides behavioral analytics to improve user accountability over time
+
+Core Transformation:
+
+  Raw Notification
+        ↓
+  AI Classification (Groq)
+        ↓
+  Structured Task with Context
+        ↓
+  Enforced Decision Overlay
+        ↓
+  Logged Action + Scheduled Follow-up
+        ↓
+  Dashboard Analytics + Accountability
+
+================================================================================
+4. SYSTEM PHILOSOPHY & BEHAVIORAL DESIGN
+================================================================================
+
+4.1 Three Core Principles
+---------------------------
+
+PRINCIPLE 1 — CONTEXT AWARENESS
+  The system understands the meaning of incoming information, not just its
+  surface content. AI extracts task, deadline, importance, and suggested
+  actions from free-form notification text.
+
+PRINCIPLE 2 — MANDATORY INTERACTION
+  Users cannot passively dismiss high-priority notifications. They must
+  respond with an explicit choice. This prevents the default human behavior
+  of deferring decisions indefinitely.
+
+PRINCIPLE 3 — BEHAVIORAL FEEDBACK
+  All decisions are logged. The system tracks patterns: how often users
+  defer, which tasks get ignored, what categories cause the most avoidance.
+  This data is surfaced as a weekly accountability dashboard.
+
+4.2 The Enforcement Principle
+-------------------------------
+Enforcement does NOT mean restriction. It means:
+  - Preventing passive dismissal of important signals
+  - Requiring conscious decision-making before moving on
+  - Reintroducing unresolved tasks at scheduled intervals
+
+This shifts the system from:
+  Information Delivery → Behavioral Guidance
+
+4.3 Behavioral Design Insight
+--------------------------------
+Users are significantly more likely to act when they are REQUIRED to decide,
+compared to when they are merely allowed to ignore.
+
+Instead of passive interaction (swipe away, read later), the system introduces:
+  - Mandatory acknowledgment
+  - Structured choice selection
+  - Accountability tracking for all deferred or ignored tasks
+
+================================================================================
+5. TARGET USERS
+================================================================================
+
+PRIMARY USERS:
+  - College students managing assignments, lab submissions, project deadlines
+  - Professionals handling client messages, meeting requests, task assignments
+  - Individuals with high notification volumes who frequently miss important items
+
+USE CASE SCENARIOS:
+
+  Scenario A — Student:
+    WhatsApp message: "Submit your IEEE paper by tonight 11:59 PM"
+    → AI detects: critical deadline, category: academic
+    → Overlay forces: Do Now / Schedule Reminder / Delegate / Ignore+reason
+    → If deferred to 8 PM, WorkManager resurfaces at 7:45 PM
+
+  Scenario B — Professional:
+    Email notification: "Client meeting moved to 3 PM tomorrow, please confirm"
+    → AI detects: meeting, requires response
+    → Overlay forces action
+    → Calendar event auto-created, draft reply generated
+
+  Scenario C — General User:
+    App notification: "Your payment of ₹4,500 is due in 2 days"
+    → AI detects: financial deadline
+    → Task created, reminder scheduled
+
+================================================================================
+6. CORE FEATURES & FUNCTIONAL REQUIREMENTS
+================================================================================
+
+--------------------------------------------------------------------------------
+FEATURE 1: NOTIFICATION INTERCEPTOR SERVICE
+--------------------------------------------------------------------------------
+Description:
+  A background Android service that silently captures all incoming notifications
+  from all apps, extracts relevant metadata, and passes them to the AI pipeline.
+
+Technical Component: NotificationListenerService
+
+Functional Requirements:
+  FR-1.1  Capture all incoming notifications system-wide
+  FR-1.2  Extract: app package name, app display name, notification title,
+          notification body text, timestamp, notification ID
+  FR-1.3  Filter out: duplicate notifications, empty notifications, system UI
+          notifications (e.g., charging, screenshot)
+  FR-1.4  Pass captured data to GroqClassifier asynchronously (coroutine)
+  FR-1.5  Run persistently in background; auto-restart if killed
+
+Data Captured Per Notification:
+  - sourceApp: String (e.g., "WhatsApp", "Gmail")
+  - packageName: String (e.g., "com.whatsapp")
+  - title: String
+  - body: String
+  - timestamp: Long (Unix epoch)
+  - notificationId: Int
+
+--------------------------------------------------------------------------------
+FEATURE 2: GROQ AI CLASSIFICATION ENGINE
+--------------------------------------------------------------------------------
+Description:
+  The intelligence core of the app. Each captured notification is sent to
+  Groq API for real-time classification. Groq returns a structured JSON
+  object containing importance level, category, extracted task, deadline,
+  and suggested user actions.
+
+Technical Component: GroqApiService.kt (Retrofit)
+
+Functional Requirements:
+  FR-2.1  Send notification data to Groq API endpoint
+  FR-2.2  Use model: llama-3.3-70b-versatile
+  FR-2.3  Receive and parse structured JSON response
+  FR-2.4  Map response to ClassifiedTask data model
+  FR-2.5  Handle API errors gracefully (fallback to manual review queue)
+  FR-2.6  Response must be received within 2 seconds (Groq is very fast)
+  FR-2.7  Store classified task in Room database
+
+Groq API Endpoint:
+  POST https://api.groq.com/openai/v1/chat/completions
+
+System Prompt Template:
+  "You are a notification classification AI. Analyze the notification below
+  and return ONLY a valid JSON object with no markdown, no explanation.
+
+  JSON schema:
+  {
+    importance: critical | high | medium | low,
+    category: deadline | meeting | payment | message | reminder | promotional | other,
+    task: string (extracted task in plain English),
+    deadline: string | null (natural language, e.g. 'tonight 11:59 PM'),
+    deadlineTimestamp: ISO8601 string | null,
+    actions: string[] (2-4 suggested action labels),
+    requiresEnforcement: boolean (true if importance is critical or high)
+  }"
+
+User Prompt Template:
+  "App: {sourceApp}
+   Title: {title}
+   Message: {body}
+   Received: {timestamp}"
+
+Sample Response:
+  {
+    "importance": "critical",
+    "category": "deadline",
+    "task": "Submit IEEE paper by tonight 11:59 PM",
+    "deadline": "tonight 11:59 PM",
+    "deadlineTimestamp": "2024-01-15T23:59:00",
+    "actions": ["Open WhatsApp", "Set Reminder", "Start Now", "Schedule"],
+    "requiresEnforcement": true
+  }
+
+--------------------------------------------------------------------------------
+FEATURE 3: DECISION ENFORCEMENT OVERLAY
+--------------------------------------------------------------------------------
+Description:
+  The centerpiece feature of SIGNAL. For all notifications where
+  requiresEnforcement = true, a full-screen overlay is displayed. The user
+  CANNOT dismiss this overlay by pressing Back or tapping outside. They must
+  make an explicit choice from 4 options.
+
+Technical Component: EnforcementOverlayActivity.kt
+
+Functional Requirements:
+  FR-3.1  Display as system-level overlay (TYPE_APPLICATION_OVERLAY)
+  FR-3.2  Show: source app icon, notification title, AI-extracted task,
+          detected deadline, importance badge, AI-suggested actions
+  FR-3.3  Present 4 action buttons (cannot be skipped):
+            → DO NOW: Marks task as in-progress, opens source app
+            → SCHEDULE: Shows time/date picker, creates WorkManager reminder
+            → DELEGATE: Opens share sheet to forward task to contact
+            → IGNORE: Shows mandatory text field for reason (min 10 chars)
+  FR-3.4  Back button press shows warning: "You must make a decision"
+  FR-3.5  On any selection: save decision + timestamp to Room DB
+  FR-3.6  Animate in from bottom with spring physics
+  FR-3.7  Show countdown timer for time-sensitive tasks
+
+Overlay Layout:
+  [App Icon + Name]           [CRITICAL badge]
+  ─────────────────────────────────────────
+  Task: Submit IEEE paper
+  Deadline: Tonight 11:59 PM  [⏱ 6h 23m]
+  ─────────────────────────────────────────
+  AI Suggested Actions:
+  [Open WhatsApp] [Start Now]
+  ─────────────────────────────────────────
+  What do you want to do?
+
+  [✅ DO NOW]     [📅 SCHEDULE]
+  [👤 DELEGATE]  [❌ IGNORE]
+
+  (If IGNORE selected)
+  Why are you ignoring this?
+  [________________________]  [Confirm]
+
+--------------------------------------------------------------------------------
+FEATURE 4: SMART TASK BOARD
+--------------------------------------------------------------------------------
+Description:
+  A Kanban-style board displaying all tasks generated from enforced
+  notifications. Tasks are categorized by status and sorted by urgency.
+
+Technical Component: TaskBoardScreen.kt (Compose)
+
+Functional Requirements:
+  FR-4.1  Three columns: PENDING / IN PROGRESS / DONE
+  FR-4.2  Task cards show: task name, source app, category icon, deadline,
+          time remaining, importance badge
+  FR-4.3  Overdue tasks highlighted in red with pulsing animation
+  FR-4.4  Tap card → expand to show full notification context + action history
+  FR-4.5  Long press card → move to different column
+  FR-4.6  FAB button → manually add task (for tasks received outside app)
+  FR-4.7  Filter bar: All / Deadlines / Meetings / Payments / Messages
+  FR-4.8  Search bar to find specific tasks
+  FR-4.9  Empty state: encouraging message when no pending tasks
+
+--------------------------------------------------------------------------------
+FEATURE 5: ACCOUNTABILITY DASHBOARD
+--------------------------------------------------------------------------------
+Description:
+  A visual analytics screen showing the user's notification handling behavior
+  over time. Designed to create awareness and motivate improvement.
+
+Technical Component: DashboardScreen.kt (Compose)
+
+Functional Requirements:
+  FR-5.1  Today's summary cards:
+            → Total notifications captured
+            → Actioned immediately (Do Now)
+            → Scheduled
+            → Delegated
+            → Ignored (with reasons)
+  FR-5.2  Weekly bar chart (built with Canvas API, no external lib needed)
+            → X-axis: Mon–Sun
+            → Y-axis: task count
+            → Color-coded bars by outcome (actioned/deferred/ignored)
+  FR-5.3  Streak counter: consecutive days with zero ignored critical tasks
+  FR-5.4  "Most Ignored" list: top 3 recurring task types user keeps avoiding
+  FR-5.5  Category breakdown pie/donut chart (Canvas)
+  FR-5.6  Weekly insight text: AI-generated behavioral tip (one Groq call)
+  FR-5.7  Export week summary (share as text)
+
+--------------------------------------------------------------------------------
+FEATURE 6: AUTOMATION ENGINE
+--------------------------------------------------------------------------------
+Description:
+  Background automation that removes friction from acting on decisions.
+  Handles rescheduling, re-surfacing, and calendar integration without
+  requiring user to manually open apps.
+
+Technical Components: WorkManager, Google Calendar API
+
+Functional Requirements:
+  FR-6.1  DEFERRED TASK RESURFACING
+            → When user selects "Schedule" and picks a time
+            → WorkManager schedules exact-time notification
+            → At scheduled time: enforcement overlay reappears
+            → If snoozed twice → escalation: cannot schedule again, must Do Now
+
+  FR-6.2  OVERDUE ESCALATION
+            → Tasks with deadline that have passed without completion
+            → Re-appear in enforcement overlay with "OVERDUE" badge
+            → Push notification with escalated urgency
+
+  FR-6.3  GOOGLE CALENDAR AUTO-INTEGRATION
+            → If AI detects category = "meeting" and a time is mentioned
+            → Automatically create Google Calendar event
+            → Prompt user to confirm (one tap)
+
+  FR-6.4  DAILY DIGEST
+            → Every day at 8 AM: push notification
+            → "You have X pending tasks and Y overdue items"
+            → Tap opens Task Board
+
+  FR-6.5  SMART QUIET HOURS
+            → User sets quiet hours (e.g., 11 PM – 7 AM)
+            → During quiet hours: batch all enforcements
+            → On wake: show consolidated enforcement for overnight tasks
+
+================================================================================
+7. TECHNICAL ARCHITECTURE
+================================================================================
+
+ARCHITECTURE PATTERN: MVVM + Clean Architecture
+
+Layers:
+  ┌─────────────────────────────────────────────┐
+  │  UI LAYER (Jetpack Compose Screens)          │
+  │  TaskBoardScreen, DashboardScreen,           │
+  │  EnforcementOverlayActivity                  │
+  └──────────────────┬──────────────────────────┘
+                     │ observes StateFlow
+  ┌──────────────────▼──────────────────────────┐
+  │  VIEWMODEL LAYER                             │
+  │  TaskViewModel, DashboardViewModel           │
+  └──────────────────┬──────────────────────────┘
+                     │ calls
+  ┌──────────────────▼──────────────────────────┐
+  │  REPOSITORY LAYER                            │
+  │  TaskRepository                              │
+  │  (single source of truth)                    │
+  └────────┬─────────────────────────┬──────────┘
+           │                         │
+  ┌────────▼────────┐    ┌──────────▼──────────┐
+  │  LOCAL DB        │    │  REMOTE API          │
+  │  Room Database   │    │  Groq API Service    │
+  │  TaskDao         │    │  (Retrofit)          │
+  │  TaskEntity      │    │  Google Calendar API │
+  └─────────────────┘    └─────────────────────┘
+           ▲
+  ┌────────┴─────────────────────────────────────┐
+  │  BACKGROUND SERVICES                          │
+  │  NotificationListenerService                  │
+  │  WorkManager (TaskRescheduleWorker)           │
+  └───────────────────────────────────────────────┘
+
+Data Flow:
+  Notification arrives
+    → NotificationListenerService.onNotificationPosted()
+    → GroqClassifier.classify(notificationData) [coroutine, IO dispatcher]
+    → ClassifiedTask returned
+    → TaskRepository.insertTask(classifiedTask)
+    → If requiresEnforcement: Intent → EnforcementOverlayActivity
+    → User makes decision → TaskRepository.updateDecision(taskId, decision)
+    → If "Schedule": WorkManager.enqueue(TaskRescheduleWorker, scheduledTime)
+    → TaskViewModel observes Room Flow → UI updates automatically
+
+================================================================================
+8. TECH STACK
+================================================================================
+
+ANDROID CORE:
+  Language              : Kotlin
+  UI Framework          : Jetpack Compose (Material 3)
+  Navigation            : Navigation Compose
+  Lifecycle             : ViewModel + StateFlow + collectAsState
+  Background Services   : WorkManager (for rescheduling)
+  Notification Capture  : NotificationListenerService
+  Overlay               : TYPE_APPLICATION_OVERLAY system window
+  Dependency Injection  : Hilt (Dagger)
+  Async                 : Kotlin Coroutines + Flow
+
+LOCAL STORAGE:
+  Database              : Room (SQLite abstraction)
+  Preferences           : DataStore (for settings, API key storage)
+
+NETWORKING:
+  HTTP Client           : Retrofit 2 + OkHttp 3
+  JSON Parsing          : Gson
+  API                   : Groq (OpenAI-compatible endpoint)
+
+AI / ML:
+  Primary AI            : Groq API — llama-3.3-70b-versatile (FREE)
+  Speed                 : ~500 tokens/second (feels instant to user)
+  Fallback              : Local keyword matcher if no internet
+
+INTEGRATIONS:
+  Calendar              : Google Calendar API (OAuth 2.0)
+  Analytics             : None external (all local Room queries)
+
+BUILD & TOOLING:
+  IDE                   : Android Studio (Hedgehog / Iguana)
+  AI Code Assistant     : Cursor / Windsurf
+  Build System          : Gradle (Kotlin DSL)
+  Min SDK               : API 26 (Android 8.0)
+  Target SDK            : API 34
+
+GRADLE DEPENDENCIES (build.gradle.kts):
+
+  // Compose BOM
+  implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+  implementation("androidx.compose.ui:ui")
+  implementation("androidx.compose.ui:ui-tooling-preview")
+  implementation("androidx.compose.material3:material3")
+  implementation("androidx.compose.material:material-icons-extended")
+  implementation("androidx.activity:activity-compose:1.8.2")
+
+  // Navigation
+  implementation("androidx.navigation:navigation-compose:2.7.6")
+
+  // Lifecycle + ViewModel
+  implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+  implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+
+  // Room
+  implementation("androidx.room:room-runtime:2.6.1")
+  implementation("androidx.room:room-ktx:2.6.1")
+  kapt("androidx.room:room-compiler:2.6.1")
+
+  // Hilt
+  implementation("com.google.dagger:hilt-android:2.50")
+  kapt("com.google.dagger:hilt-android-compiler:2.50")
+  implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
+  implementation("androidx.hilt:hilt-work:1.1.0")
+
+  // Retrofit + Groq
+  implementation("com.squareup.retrofit2:retrofit:2.9.0")
+  implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+  implementation("com.squareup.okhttp3:okhttp:4.12.0")
+  implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+  // WorkManager
+  implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+  // Coroutines
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+  // DataStore
+  implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+  // Coil (app icons)
+  implementation("io.coil-kt:coil-compose:2.5.0")
+
+================================================================================
+9. API SPECIFICATIONS — GROQ
+================================================================================
+
+Base URL     : https://api.groq.com/openai/v1
+Endpoint     : POST /chat/completions
+Auth Header  : Authorization: Bearer {GROQ_API_KEY}
+Content-Type : application/json
+Model        : llama-3.3-70b-versatile
+Max Tokens   : 300
+Temperature  : 0.1 (low for consistent JSON output)
+
+REQUEST BODY:
+{
+  "model": "llama-3.3-70b-versatile",
+  "max_tokens": 300,
+  "temperature": 0.1,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a notification classification AI. Analyze the notification and return ONLY a JSON object — no markdown, no explanation, no backticks. Use this exact schema: {importance: 'critical'|'high'|'medium'|'low', category: 'deadline'|'meeting'|'payment'|'message'|'reminder'|'promotional'|'other', task: string, deadline: string|null, deadlineTimestamp: ISO8601|null, actions: string[], requiresEnforcement: boolean}"
+    },
+    {
+      "role": "user",
+      "content": "App: {sourceApp}\nTitle: {title}\nMessage: {body}\nReceived: {formattedTimestamp}"
+    }
+  ]
+}
+
+RESPONSE PARSING:
+  Extract: response.choices[0].message.content
+  Parse as JSON → map to ClassifiedTask data class
+  If JSON parse fails → fallback: importance=medium, requiresEnforcement=false
+
+RATE LIMITS (Free Tier):
+  Requests per minute  : 30
+  Tokens per minute    : 14,400
+  Daily token limit    : None (very generous)
+  Cost                 : FREE
+
+API KEY STORAGE:
+  - Store in local.properties: GROQ_API_KEY=gsk_xxxxxxxxxxxx
+  - Access via BuildConfig.GROQ_API_KEY
+  - Never commit to version control
+  - Add local.properties to .gitignore
+
+================================================================================
+10. DATA MODELS & DATABASE SCHEMA
+================================================================================
+
+--- DATA CLASS: NotificationData ---
+data class NotificationData(
+    val id: String,               // UUID generated on capture
+    val sourceApp: String,        // "WhatsApp"
+    val packageName: String,      // "com.whatsapp"
+    val title: String,
+    val body: String,
+    val capturedAt: Long          // System.currentTimeMillis()
+)
+
+--- DATA CLASS: ClassifiedTask ---
+data class ClassifiedTask(
+    val notificationId: String,
+    val importance: ImportanceLevel,  // CRITICAL, HIGH, MEDIUM, LOW
+    val category: TaskCategory,       // DEADLINE, MEETING, PAYMENT, MESSAGE, etc.
+    val task: String,
+    val deadline: String?,
+    val deadlineTimestamp: Long?,
+    val suggestedActions: List<String>,
+    val requiresEnforcement: Boolean
+)
+
+--- ROOM ENTITY: TaskEntity ---
+@Entity(tableName = "tasks")
+data class TaskEntity(
+    @PrimaryKey val id: String,
+    val sourceApp: String,
+    val packageName: String,
+    val originalTitle: String,
+    val originalBody: String,
+    val capturedAt: Long,
+    val extractedTask: String,
+    val importance: String,       // stored as string enum
+    val category: String,
+    val deadline: String?,
+    val deadlineTimestamp: Long?,
+    val status: String,           // PENDING, IN_PROGRESS, DONE, IGNORED
+    val userDecision: String?,    // DO_NOW, SCHEDULE, DELEGATE, IGNORE
+    val ignoreReason: String?,
+    val scheduledFor: Long?,
+    val decidedAt: Long?,
+    val completedAt: Long?,
+    val requiresEnforcement: Boolean,
+    val isOverdue: Boolean
+)
+
+--- ROOM DAO: TaskDao ---
+Key queries:
+  @Query("SELECT * FROM tasks WHERE status = 'PENDING' ORDER BY deadlineTimestamp ASC")
+  fun getPendingTasks(): Flow<List<TaskEntity>>
+
+  @Query("SELECT * FROM tasks WHERE status = 'IGNORED' ORDER BY capturedAt DESC")
+  fun getIgnoredTasks(): Flow<List<TaskEntity>>
+
+  @Query("SELECT COUNT(*) FROM tasks WHERE capturedAt >= :startOfDay")
+  suspend fun getTodayCount(startOfDay: Long): Int
+
+  @Query("SELECT COUNT(*) FROM tasks WHERE userDecision = 'DO_NOW' AND capturedAt >= :startOfDay")
+  suspend fun getTodayActionedCount(startOfDay: Long): Int
+
+  @Query("SELECT * FROM tasks WHERE deadlineTimestamp < :now AND status != 'DONE'")
+  fun getOverdueTasks(now: Long): Flow<List<TaskEntity>>
+
+================================================================================
+11. SCREEN-BY-SCREEN UI SPECIFICATIONS
+================================================================================
+
+APP NAVIGATION STRUCTURE:
+  MainActivity
+    ├── HomeScreen (bottom nav)
+    │     ├── TaskBoardScreen      (Tab 1 — Tasks)
+    │     ├── DashboardScreen      (Tab 2 — Stats)
+    │     └── SettingsScreen       (Tab 3 — Settings)
+    └── EnforcementOverlayActivity (launched independently as overlay)
+
+--- SCREEN: ONBOARDING (First Launch) ---
+  Step 1: "Grant Notification Access" → opens system settings
+  Step 2: "Allow Display Over Apps" → opens overlay permission settings
+  Step 3: "Connect Google Calendar (Optional)" → OAuth consent
+  Step 4: "Enter Groq API Key" → stored in DataStore
+  Navigation: Skip available for steps 3 and 4
+
+--- SCREEN: TASK BOARD ---
+  Top Bar: "Signal" logo | [Filter icon] | [Search icon]
+  Filter Chips: All | Deadlines | Meetings | Payments | Messages
+  Body: LazyColumn with three section headers
+    Section "CRITICAL & OVERDUE": Red background cards
+    Section "PENDING": Normal cards sorted by deadline
+    Section "COMPLETED TODAY": Greyed out cards
+  Card Contents:
+    - Left: Category icon (colored dot)
+    - Center: Task name (bold), Source app (small), Deadline (with color)
+    - Right: Importance badge, Time remaining chip
+  FAB: "+" to add task manually
+  Empty State: Illustration + "No pending tasks. You're on top of it! 🎯"
+
+--- SCREEN: DASHBOARD ---
+  Top Bar: "Your Week" | [Share icon]
+  Section 1 — Today at a Glance (4 stat cards in 2x2 grid)
+    [Total Captured]  [Actioned Now]
+    [Scheduled]       [Ignored]
+  Section 2 — Streak
+    Fire emoji + "5 day streak of zero ignored critical tasks!"
+  Section 3 — Weekly Activity Chart
+    Bar chart (Mon-Sun), color-coded by outcome
+  Section 4 — Top Avoided Tasks
+    "You keep ignoring these:" + list of 3 categories
+  Section 5 — AI Insight (Groq generated, refreshed weekly)
+    Card: "Based on your patterns, you tend to defer payment tasks..."
+
+--- SCREEN: ENFORCEMENT OVERLAY ---
+  (Full screen, always on top, cannot be swiped away)
+  Background: Blurred app content behind frosted glass
+  Top: [Source App Icon] [Source App Name] [CRITICAL / HIGH badge]
+  Divider
+  Middle:
+    "Action Required"
+    [Task text — large, bold]
+    [Deadline — with countdown timer if < 24h]
+    [AI Suggested Actions as small chips]
+  Divider
+  Bottom — 4 action buttons (2x2 grid):
+    [✅ DO NOW]      [📅 SCHEDULE]
+    [👤 DELEGATE]   [❌ IGNORE]
+  Back press: Toast "Please make a decision to continue"
+
+--- SCHEDULE SUB-VIEW (within overlay) ---
+  Date picker (default: today)
+  Time picker
+  "Remind me at" preview text
+  [Confirm Schedule] button
+
+--- IGNORE SUB-VIEW (within overlay) ---
+  Text field: "Why are you ignoring this? (required)"
+  Character minimum: 10 chars
+  [Confirm Ignore] button (disabled until 10 chars entered)
+
+--- SCREEN: SETTINGS ---
+  Groq API Key (masked, tap to edit)
+  Quiet Hours toggle + start/end time pickers
+  Enforcement mode: All High+ / Critical Only
+  Google Calendar sync toggle
+  Daily digest time picker
+  Clear all data (with confirmation)
+  About + version
+
+================================================================================
+12. AUTOMATION ENGINE
+================================================================================
+
+12.1 WorkManager — TaskRescheduleWorker
+-----------------------------------------
+Triggered when user selects "Schedule" in enforcement overlay.
+
+Worker Input:
+  taskId: String
+  scheduledTimeMs: Long
+
+Worker Logic:
+  1. Load task from Room by taskId
+  2. Send local notification at scheduledTimeMs
+  3. On notification tap → launch EnforcementOverlayActivity with taskId
+  4. Track reschedule count in TaskEntity
+  5. If rescheduleCount >= 2: in overlay, hide "Schedule" button,
+     show message: "You've deferred this twice. Time to act."
+
+WorkManager Constraints:
+  .setRequiredNetworkType(NetworkType.NOT_REQUIRED)  // works offline
+  .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
+
+12.2 Overdue Escalation Worker
+--------------------------------
+Runs daily at midnight. Scans all tasks where:
+  deadlineTimestamp < now AND status != DONE
+
+For each: sets isOverdue = true in Room, sends escalation notification.
+
+12.3 Google Calendar Integration
+-----------------------------------
+Trigger: AI classification returns category = "meeting" AND
+         deadline or time detected in notification
+
+Flow:
+  1. Parse meeting time from deadlineTimestamp
+  2. Call Google Calendar API: POST /calendars/primary/events
+  3. Create event with title = extracted task, time = parsed time
+  4. Show snackbar: "Meeting added to calendar ✓"
+  5. If OAuth not granted: prompt once, then skip silently
+
+12.4 Daily Digest (WorkManager — PeriodicWorkRequest)
+-------------------------------------------------------
+Frequency: Daily at 8:00 AM (user-configurable in settings)
+Notification content: "Good morning! You have {x} pending tasks
+and {y} overdue items waiting. Tap to review."
+
+================================================================================
+13. PERMISSIONS & SECURITY
+================================================================================
+
+Required Permissions in AndroidManifest.xml:
+  <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"/>
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+Runtime Permission Checks:
+  Notification Listener:
+    NotificationManagerCompat.getEnabledListenerPackages(context)
+    If not enabled: Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+
+  Overlay Permission:
+    Settings.canDrawOverlays(context)
+    If not granted: Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+
+Security Considerations:
+  - Groq API key stored in DataStore (encrypted), never in code
+  - No notification content sent to any server except Groq
+  - All task data stored locally (Room), never uploaded
+  - Google Calendar: read/write scope limited to primary calendar
+  - Notification content treated as sensitive: not logged to console in release build
+
+================================================================================
+14. BUILD ORDER & 24-HOUR TIMELINE
+================================================================================
+
+PHASE 1 — ANDROID STUDIO SETUP [0h – 1h]
+  □ Create new project: Empty Activity (Compose)
+  □ Create full folder structure as specified in Section 7
+  □ Add all dependencies to build.gradle.kts
+  □ Add permissions to AndroidManifest.xml
+  □ Create local.properties entry for GROQ_API_KEY
+  □ Create Application class with @HiltAndroidApp
+  □ Sync gradle, ensure build succeeds
+
+PHASE 2 — DATA LAYER [1h – 3h] (Cursor)
+  □ Create all data models (NotificationData, ClassifiedTask, enums)
+  □ Create TaskEntity + AppDatabase + TaskDao
+  □ Create TaskRepository
+  □ Test: insert dummy task, read back via Flow
+
+PHASE 3 — GROQ API INTEGRATION [3h – 5h] (Cursor)
+  □ Create GroqApiService (Retrofit interface)
+  □ Create request/response data classes
+  □ Create GroqClassifier (orchestrates the API call)
+  □ Test with a hardcoded notification string
+  □ Verify JSON parsing works correctly
+
+PHASE 4 — NOTIFICATION SERVICE [5h – 8h] (Cursor)
+  □ Create NotificationInterceptorService extends NotificationListenerService
+  □ Connect to GroqClassifier
+  □ Connect to TaskRepository
+  □ Register in AndroidManifest with proper intent-filter
+  □ Test: send WhatsApp message, verify task appears in Room
+
+PHASE 5 — ENFORCEMENT OVERLAY [8h – 11h] (Cursor + Manual)
+  □ Create EnforcementOverlayActivity
+  □ Implement full-screen system overlay
+  □ Build 4-button decision UI in Compose
+  □ Implement back-press blocker
+  □ Implement Schedule sub-view with time picker
+  □ Implement Ignore sub-view with text field
+  □ Connect decisions to Room via ViewModel
+  □ TEST THIS THOROUGHLY — it's the demo centerpiece
+
+PHASE 6 — TASK BOARD UI [11h – 14h] (Cursor)
+  □ Create TaskViewModel with StateFlow
+  □ Create TaskBoardScreen with LazyColumn
+  □ Build task cards with status colors
+  □ Implement filter chips
+  □ Implement overdue highlighting
+  □ FAB for manual task entry
+
+PHASE 7 — DASHBOARD UI [14h – 16h] (Cursor)
+  □ Create DashboardViewModel with Room aggregate queries
+  □ Build stat cards for today's summary
+  □ Build bar chart using Canvas API
+  □ Build streak counter
+  □ Add "Most Ignored" categories list
+
+PHASE 8 — WORKMANAGER AUTOMATION [16h – 18h] (Cursor)
+  □ Create TaskRescheduleWorker
+  □ Wire it up when user selects "Schedule" in overlay
+  □ Create OverdueCheckWorker (daily)
+  □ Test scheduling: pick time 2 minutes from now, verify overlay reappears
+  □ (Optional) Google Calendar integration
+
+PHASE 9 — INTEGRATION & BUG FIXES [18h – 21h] (Android Studio)
+  □ Run on physical device (not emulator — notification service works better)
+  □ Fix any permission flow issues
+  □ Fix any Hilt injection errors
+  □ Fix any Room migration issues
+  □ Test full end-to-end flow multiple times
+
+PHASE 10 — POLISH & APK [21h – 24h]
+  □ Add app icon (use Android Asset Studio)
+  □ Polish overlay animations (spring animation on entry)
+  □ Add empty states to all screens
+  □ Test on second device if available
+  □ Build → Generate Signed APK (debug key is fine for hackathon)
+  □ Prepare demo flow (rehearse 3 times)
+
+================================================================================
+15. DEMO FLOW FOR JUDGES
+================================================================================
+
+TOTAL DEMO TIME: 90 seconds — memorize this flow
+
+SETUP BEFORE DEMO:
+  - Phone charged to 100%
+  - App installed and permissions all granted
+  - Dashboard showing 2-3 pre-seeded tasks
+  - A contact saved in phone as "Team Member"
+
+DEMO SCRIPT:
+
+  [0:00] "This is SIGNAL. Your phone receives hundreds of notifications daily.
+          Most of them get swiped away — including critical ones."
+
+  [0:10] Send a WhatsApp message to your own number:
+         "Hey, submit the IEEE project report by tonight 11:59 PM"
+
+  [0:18] Show the notification arriving on screen.
+         "Normally you'd swipe this. With SIGNAL..."
+
+  [0:22] ENFORCEMENT OVERLAY POPS UP
+         "The AI has already classified this as CRITICAL with a deadline.
+          Watch what happens if I try to swipe it away." [press back]
+         "Can't dismiss it. I have to decide."
+
+  [0:35] Tap "SCHEDULE" → pick 7:00 PM
+         "I've scheduled it. At 7 PM, this overlay will come back."
+
+  [0:45] Open Task Board
+         "Every enforced decision lands here — zero manual entry."
+
+  [0:55] Open Dashboard
+         "SIGNAL tracks my behavior. I can see I've deferred 3 tasks
+          this week. There's my streak — 2 days of zero ignored critical tasks."
+
+  [1:10] "This is not another notification manager. It's a behavioral
+          guidance system. It ensures important signals result in action."
+
+  [1:20] [END]
+
+KEY PHRASES FOR Q&A:
+  "NotificationListenerService captures system-wide without modifying any app"
+  "Groq classifies in under 1 second — it's an LLM running at 500 tokens/sec"
+  "The enforcement overlay uses TYPE_APPLICATION_OVERLAY — cannot be bypassed"
+  "All data is local — nothing stored externally except the Groq API call"
+
+================================================================================
+16. CURSOR/WINDSURF PROMPTS (READY TO USE)
+================================================================================
+
+IMPORTANT: Start every Cursor session by pasting your project structure
+and existing data models as context before generating new files.
+
+--- PROMPT 1: DATA LAYER ---
+"I'm building an Android app called SIGNAL in Kotlin with Jetpack Compose,
+MVVM + Clean Architecture, Hilt for DI, Room for local DB, Retrofit for API.
+
+Create the complete data layer including:
+1. NotificationData.kt — data class for raw captured notification
+2. ClassifiedTask.kt — data class for Groq AI response
+3. ImportanceLevel.kt — enum: CRITICAL, HIGH, MEDIUM, LOW
+4. TaskCategory.kt — enum: DEADLINE, MEETING, PAYMENT, MESSAGE, REMINDER, PROMOTIONAL, OTHER
+5. TaskStatus.kt — enum: PENDING, IN_PROGRESS, DONE, IGNORED
+6. UserDecision.kt — enum: DO_NOW, SCHEDULE, DELEGATE, IGNORE
+7. TaskEntity.kt — Room @Entity with all fields as described
+8. TaskDao.kt — Room @Dao with Flow queries for all screens
+9. AppDatabase.kt — Room @Database
+10. TaskRepository.kt — Repository with all CRUD + aggregate operations
+
+Use Hilt @Singleton for repository. Use suspend functions and Flow throughout."
+
+--- PROMPT 2: GROQ API SERVICE ---
+"Create the complete Groq AI integration for the SIGNAL Android app.
+
+Files to create:
+1. GroqRequest.kt — data classes for API request (model, messages, temperature)
+2. GroqResponse.kt — data classes for API response (choices, message, content)
+3. GroqApiService.kt — Retrofit interface, POST to /v1/chat/completions
+4. GroqRetrofitClient.kt — Retrofit instance with OkHttp, Auth header interceptor
+5. GroqClassifier.kt — Takes NotificationData, builds prompt, calls API,
+   parses JSON response into ClassifiedTask, handles errors with fallback
+
+System prompt: classify notification, return JSON only with schema:
+{importance, category, task, deadline, deadlineTimestamp, actions[], requiresEnforcement}
+
+Model: llama-3.3-70b-versatile
+Base URL: https://api.groq.com/openai/v1
+API key from BuildConfig.GROQ_API_KEY
+
+Error handling: if JSON parse fails, return ClassifiedTask with importance=MEDIUM,
+requiresEnforcement=false, task=notification title."
+
+--- PROMPT 3: NOTIFICATION LISTENER SERVICE ---
+"Create NotificationInterceptorService.kt for the SIGNAL Android app.
+
+Requirements:
+- Extends NotificationListenerService
+- Override onNotificationPosted(sbn: StatusBarNotification)
+- Extract: package name, app name (using PackageManager), title, body, timestamp
+- Filter out: notifications from own package, empty body/title, system packages
+- Launch GroqClassifier in coroutine (IO dispatcher) with the notification data
+- After classification: save to Room via TaskRepository
+- If classifiedTask.requiresEnforcement == true:
+  launch EnforcementOverlayActivity via Intent with taskId as extra
+- Use serviceScope (SupervisorJob + Dispatchers.IO)
+- Handle exceptions gracefully — service should never crash
+
+Also create the manifest entry snippet I need to add in AndroidManifest.xml
+including the correct intent-filter for notification listener service."
+
+--- PROMPT 4: ENFORCEMENT OVERLAY ---
+"Create EnforcementOverlayActivity.kt for the SIGNAL Android app using
+Jetpack Compose. This is the most important screen.
+
+Requirements:
+- Launched from NotificationListenerService via Intent with taskId extra
+- Loads task from Room using taskId
+- Displays: source app name, task text (bold, large), deadline with countdown,
+  importance badge, AI suggested action chips
+- Shows 4 mandatory choice buttons (2x2 grid):
+  DO NOW / SCHEDULE / DELEGATE / IGNORE
+- Back press: show Toast 'Please make a decision' — do NOT finish activity
+- Window type: TYPE_APPLICATION_OVERLAY (system overlay)
+- Animate in from bottom with spring animation
+
+DO NOW: update task status to IN_PROGRESS, open source app via packageName
+SCHEDULE: show DateTimePicker composable, on confirm create WorkManager task,
+          update task scheduledFor field, finish activity
+DELEGATE: open Android share sheet with task text, update task decision
+IGNORE: show TextField requiring 10+ characters reason, on confirm save
+        ignoreReason to Room, finish activity
+
+Use EnforcementViewModel (Hilt) to interact with TaskRepository.
+All Room operations via coroutines."
+
+--- PROMPT 5: TASK BOARD SCREEN ---
+"Create TaskBoardScreen.kt using Jetpack Compose for the SIGNAL Android app.
+
+Requirements:
+- Connected to TaskViewModel which exposes StateFlow<List<TaskEntity>>
+- LazyColumn with 3 sticky section headers:
+  OVERDUE (red), PENDING (normal), DONE TODAY (grey)
+- Task card composable showing:
+  category icon (colored), task name (bold), source app, deadline text,
+  time remaining chip (red if < 2h, orange if < 24h, green otherwise),
+  importance badge
+- Filter row: All / Deadlines / Meetings / Payments / Messages (chip style)
+- Search bar (filter list in ViewModel)
+- Tap card: expand to show full original notification + action history
+- Long press: bottom sheet to change status
+- FAB: dialog to manually add task (title + deadline + category)
+- Overdue tasks: pulsing red left border animation
+- Empty state: centered illustration text 'You are all caught up 🎯'
+
+Use Material 3 components. Dark theme compatible."
+
+--- PROMPT 6: DASHBOARD SCREEN ---
+"Create DashboardScreen.kt using Jetpack Compose for the SIGNAL Android app.
+
+Requirements:
+- Connected to DashboardViewModel exposing DashboardUiState data class
+- DashboardUiState contains:
+  todayTotal, todayActioned, todayScheduled, todayIgnored,
+  streakDays, weeklyData (list of 7 DayStats), topIgnoredCategories
+
+Section 1 — Today Stats: 2x2 grid of stat cards with icons
+Section 2 — Streak: row with fire emoji and streak count
+Section 3 — Weekly Chart: drawn using Canvas API (Compose Canvas, not View)
+  - 7 bars for Mon-Sun
+  - Color coded: actioned=green, scheduled=blue, ignored=red
+  - Axis labels
+Section 4 — Top Avoided: list of top 3 ignored categories with percentage
+Section 5 — AI Insight card: placeholder text for now
+
+DashboardViewModel queries Room DB for all stats.
+Include the ViewModel and DashboardUiState data class."
+
+--- PROMPT 7: WORKMANAGER RESCHEDULER ---
+"Create TaskRescheduleWorker.kt for the SIGNAL Android app using WorkManager.
+
+Requirements:
+- Extends CoroutineWorker with HiltWorker
+- Input: taskId (String), scheduledTimeMs (Long)
+- When executed: load task from Room, send local notification
+- Notification on tap: launch EnforcementOverlayActivity with taskId
+- Track rescheduleCount in TaskEntity (increment each time)
+- If rescheduleCount >= 2: in the overlay, escalate (separate flag in WorkData)
+
+Also create a WorkManagerHelper.kt with:
+- fun scheduleTaskReminder(taskId: String, scheduledTimeMs: Long)
+- fun cancelTaskReminder(taskId: String)
+- Uses setExactAndAllowWhileIdle for precise timing
+
+Also create OverdueScanWorker.kt:
+- Runs daily, scans for tasks with deadline < now and status != DONE
+- Updates isOverdue = true in Room
+- Sends daily digest notification with count of overdue tasks"
+
+================================================================================
+17. NON-FUNCTIONAL REQUIREMENTS
+================================================================================
+
+PERFORMANCE:
+  NF-1.1  Groq classification: < 2 seconds end-to-end
+  NF-1.2  Overlay launch: < 500ms from notification received
+  NF-1.3  Room queries: < 100ms (all queries indexed)
+  NF-1.4  App cold start: < 3 seconds
+  NF-1.5  NotificationListenerService: no perceptible battery drain
+
+RELIABILITY:
+  NF-2.1  NotificationListenerService must survive app kill / phone restart
+          (RECEIVE_BOOT_COMPLETED broadcasts START_STICKY)
+  NF-2.2  WorkManager tasks persist across reboots
+  NF-2.3  Groq API failure must not crash app — fallback gracefully
+
+USABILITY:
+  NF-3.1  Onboarding must complete in under 3 minutes
+  NF-3.2  All permissions explained clearly before requesting
+  NF-3.3  All screens work in both light and dark mode
+
+PRIVACY:
+  NF-4.1  No notification content stored in external servers
+  NF-4.2  Groq API calls contain only notification text (no user identity)
+  NF-4.3  All personal task data remains on device (Room local only)
+
+================================================================================
+18. KNOWN LIMITATIONS & FUTURE SCOPE
+================================================================================
+
+CURRENT LIMITATIONS (Acceptable for Hackathon):
+  - Groq API requires internet connection (no offline AI classification)
+  - Overlay may not show on all OEM Android skins without adjusting settings
+  - Google Calendar integration requires extra OAuth setup time
+  - Media/image notifications (photos in WhatsApp) are not analyzed
+  - No cross-device sync
+
+FUTURE SCOPE (Post-Hackathon):
+  - On-device LLM using Gemma Nano (MediaPipe) for offline operation
+  - iOS version using UNNotificationServiceExtension
+  - Team/shared accountability (family or work group task sharing)
+  - Natural language task creation via voice
+  - Integration with Slack, Jira, Notion via APIs
+  - ML model trained on user behavior for personalized importance scoring
+  - Wear OS companion app for wrist-level enforcement
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+
+App Name     : SIGNAL
+Tagline      : Important signals. Enforced decisions. Real outcomes.
+Team         : BBBY — MS Ramaiah Institute of Technology
+Build Time   : 24 Hours
+Primary Tech : Kotlin + Jetpack Compose + Groq API
+Differentiator: The only notification system that enforces decisions,
+                not just delivers information.
+
+================================================================================
