@@ -83,9 +83,12 @@ object CalendarHelper {
 
         val projection = arrayOf(
             CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.ACCOUNT_TYPE,
             CalendarContract.Calendars.IS_PRIMARY,
-            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME
         )
+
+        // Select only writable calendars
         val selection = "${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ?"
         val selectionArgs = arrayOf(CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString())
 
@@ -93,11 +96,33 @@ object CalendarHelper {
             context.contentResolver.query(
                 CalendarContract.Calendars.CONTENT_URI,
                 projection, selection, selectionArgs,
-                "${CalendarContract.Calendars.IS_PRIMARY} DESC"  // primary first
+                null
             )?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Calendars._ID))
-                } else null
+                var bestId: Long? = null
+                var bestScore = -1
+
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(CalendarContract.Calendars._ID))
+                    val type = cursor.getString(cursor.getColumnIndexOrThrow(CalendarContract.Calendars.ACCOUNT_TYPE)) ?: ""
+                    val isPrimary = cursor.getInt(cursor.getColumnIndexOrThrow(CalendarContract.Calendars.IS_PRIMARY)) == 1
+                    
+                    var currentScore = 0
+                    if (type.lowercase() == "com.google") currentScore += 10
+                    if (isPrimary) currentScore += 5
+                    
+                    if (currentScore > bestScore) {
+                        bestScore = currentScore
+                        bestId = id
+                    }
+                }
+                
+                if (bestId == null) {
+                    Log.w(TAG, "No suitable calendar found (Total calendars checked: ${cursor.count})")
+                } else {
+                    Log.d(TAG, "Selected calendar ID $bestId with score $bestScore")
+                }
+                
+                bestId
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to query calendars: ${e.message}", e)

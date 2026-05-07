@@ -34,7 +34,7 @@ JSON schema:
   "category": "deadline" | "meeting" | "payment" | "message" | "reminder" | "promotional" | "other",
   "task": "string (extracted task in plain English)",
   "deadline": "string | null (natural language, e.g. tonight 11:59 PM)",
-  "deadlineTimestamp": "ISO8601 string | null",
+  "deadlineTimestamp": "ISO8601 string | null (MUST be in the SAME timezone as the 'Received' timestamp provided)",
   "actions": ["string array of 2-4 suggested action labels"],
   "requiresEnforcement": true | false
 }"""
@@ -48,7 +48,7 @@ JSON schema:
             val userContent = """App: ${notificationData.sourceApp}
 Title: ${notificationData.title}
 Message: ${notificationData.body}
-Received: $timestamp"""
+Received: $timestamp (${TimeZone.getDefault().id})"""
 
             val request = GroqRequest(
                 model = MODEL,
@@ -138,13 +138,20 @@ Received: $timestamp"""
 
     private fun parseIso(iso: String): Long? {
         return try {
+            // Remove 'Z' if present to treat as local if needed, 
+            // but better yet, use a format that handles optional offset
+            val clean = iso.replace("Z", "+0000")
             val formats = listOf(
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.getDefault()),
                 SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mmZ", Locale.getDefault()),
                 SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault()),
                 SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             )
             formats.firstNotNullOfOrNull { fmt ->
-                runCatching { fmt.parse(iso)?.time }.getOrNull()
+                runCatching { 
+                    fmt.parse(clean)?.time 
+                }.getOrNull()
             }
         } catch (e: Exception) {
             null
