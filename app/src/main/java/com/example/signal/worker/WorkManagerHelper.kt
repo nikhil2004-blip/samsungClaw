@@ -9,22 +9,12 @@ object WorkManagerHelper {
     fun scheduleTaskReminder(context: Context, taskId: String, scheduledTimeMs: Long) {
         val delay = scheduledTimeMs - System.currentTimeMillis()
         if (delay <= 0) return
-
-        val data = workDataOf(TaskRescheduleWorker.KEY_TASK_ID to taskId)
-
-        val request = OneTimeWorkRequestBuilder<TaskRescheduleWorker>()
-            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
-            .setInputData(data)
-            .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.MINUTES)
-            .addTag(taskId)
-            .build()
-
-        WorkManager.getInstance(context)
-            .enqueueUniqueWork(taskId, ExistingWorkPolicy.REPLACE, request)
+        // Use exact AlarmManager for precise snooze timing
+        AlarmScheduler.schedule(context, taskId, scheduledTimeMs)
     }
 
     fun cancelTaskReminder(context: Context, taskId: String) {
-        WorkManager.getInstance(context).cancelUniqueWork(taskId)
+        AlarmScheduler.cancel(context, taskId)
     }
 
     fun scheduleOverdueScan(context: Context) {
@@ -34,6 +24,23 @@ object WorkManagerHelper {
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "overdue_scan",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
+    }
+
+    /**
+     * Runs SweepWorker every 15 minutes (WorkManager minimum) to move
+     * past-deadline tasks → MISSED even when the main UI is not open.
+     * This fixes the case where a user schedules a snooze, the alarm fires,
+     * they dismiss the overlay, and the original deadline passes in the background.
+     */
+    fun scheduleMissedSweep(context: Context) {
+        val request = PeriodicWorkRequestBuilder<SweepWorker>(15, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "missed_sweep",
             ExistingPeriodicWorkPolicy.KEEP,
             request
         )

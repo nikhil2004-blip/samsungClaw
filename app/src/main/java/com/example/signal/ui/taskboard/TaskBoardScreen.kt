@@ -515,6 +515,72 @@ private fun TaskCard(
                 }
             }
 
+            // Scheduled reminder badge
+            task.scheduledFor?.let { sf ->
+                if (sf > System.currentTimeMillis()) {
+                    val schedLabel = java.text.SimpleDateFormat("EEE HH:mm", java.util.Locale.getDefault())
+                        .format(java.util.Date(sf))
+                    Spacer(Modifier.height(5.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Notifications, null,
+                            tint = Color(0xFF64B5F6),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            "⏰ Reminder: $schedLabel",
+                            color = Color(0xFF64B5F6),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // Ignored state badge
+            if (task.userDecision == "IGNORE") {
+                Spacer(Modifier.height(5.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Block, null,
+                        tint = Color.White.copy(alpha = 0.35f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        "Ignored${task.ignoreReason?.let { " — $it" } ?: ""}",
+                        color = Color.White.copy(alpha = 0.35f),
+                        fontSize = 11.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+
+            // Forwarded/Delegated state badge
+            if (task.userDecision == "DELEGATE") {
+                Spacer(Modifier.height(5.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Send, null,
+                        tint = Color(0xFFAB47BC).copy(alpha = 0.7f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        "↗️ Forwarded to someone else",
+                        color = Color(0xFFAB47BC).copy(alpha = 0.7f),
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
             // Expanded details
             AnimatedVisibility(visible = isExpanded) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {

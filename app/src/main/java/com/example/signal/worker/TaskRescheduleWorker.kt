@@ -27,12 +27,22 @@ class TaskRescheduleWorker @AssistedInject constructor(
         val taskId = inputData.getString(KEY_TASK_ID) ?: return Result.failure()
         val task   = taskRepository.getTaskById(taskId) ?: return Result.failure()
 
-        createNotificationChannel()
-
+        // ── 1. Directly launch the enforcement overlay ─────────────────────────
+        // This fires even when the screen is off / locked because the Activity
+        // declares FLAG_SHOW_WHEN_LOCKED + FLAG_TURN_SCREEN_ON in its onCreate.
         val overlayIntent = Intent(context, EnforcementOverlayActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EnforcementOverlayActivity.EXTRA_TASK_ID, taskId)
         }
+        context.startActivity(overlayIntent)
+
+        // ── 2. Also post a high-priority notification as a fallback ────────────
+        // If the system blocks the direct Activity start (battery saver etc.)
+        // the user can still tap the notification to reach the overlay.
+        createNotificationChannel()
+
         val pendingIntent = PendingIntent.getActivity(
             context, taskId.hashCode(), overlayIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -44,8 +54,10 @@ class TaskRescheduleWorker @AssistedInject constructor(
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("$urgencyLabel — ${task.sourceApp}")
             .setContentText(task.extractedTask)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
+            .setFullScreenIntent(pendingIntent, /* highPriority = */ true)
             .setContentIntent(pendingIntent)
             .build()
 
@@ -60,14 +72,18 @@ class TaskRescheduleWorker @AssistedInject constructor(
             val channel = NotificationChannel(
                 CHANNEL_ID, "Task Reminders",
                 NotificationManager.IMPORTANCE_HIGH
-            )
+            ).apply {
+                description = "Scheduled task reminders that re-open the enforcement overlay"
+                enableVibration(true)
+                enableLights(true)
+            }
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             nm.createNotificationChannel(channel)
         }
     }
 
     companion object {
-        const val KEY_TASK_ID   = "task_id"
-        const val CHANNEL_ID    = "signal_reminders"
+        const val KEY_TASK_ID = "task_id"
+        const val CHANNEL_ID  = "signal_reminders"
     }
 }

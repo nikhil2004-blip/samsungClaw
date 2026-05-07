@@ -45,8 +45,7 @@ interface TaskDao {
             WHEN 'MEDIUM'   THEN 2
             ELSE                 3
           END ASC,
-          CASE WHEN deadlineTimestamp IS NULL THEN 1 ELSE 0 END ASC,
-          deadlineTimestamp ASC
+          capturedAt DESC
     """)
     fun getAllTasksSortedByPriority(): Flow<List<TaskEntity>>
 

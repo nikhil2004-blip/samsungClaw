@@ -6,6 +6,7 @@ import com.example.signal.data.local.CategoryCount
 import com.example.signal.data.local.TaskEntity
 import com.example.signal.data.model.*
 import com.example.signal.utils.CalendarHelper
+import com.example.signal.worker.WorkManagerHelper
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -115,8 +116,11 @@ class TaskRepository @Inject constructor(
     suspend fun setIgnoreReason(taskId: String, reason: String) =
         dao.updateIgnoreReason(taskId, reason)
 
-    suspend fun scheduleTask(taskId: String, scheduledForMs: Long) =
+    suspend fun scheduleTask(taskId: String, scheduledForMs: Long) {
         dao.updateSchedule(taskId, scheduledForMs)
+        // Enqueue WorkManager so the reminder actually fires at the chosen time
+        WorkManagerHelper.scheduleTaskReminder(context, taskId, scheduledForMs)
+    }
 
     suspend fun markDone(taskId: String) =
         dao.markDone(taskId, System.currentTimeMillis())

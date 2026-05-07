@@ -95,9 +95,9 @@ class EnforcementOverlayActivity : ComponentActivity() {
                         onDelegate = {
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, "Task: ${t.extractedTask}\nDeadline: ${t.deadline ?: "N/A"}")
+                                putExtra(Intent.EXTRA_TEXT, "Task: ${t.extractedTask}\nDeadline: ${t.deadline ?: "N/A"}\n\nForwarded via Signal AI")
                             }
-                            startActivity(Intent.createChooser(shareIntent, "Delegate task via"))
+                            startActivity(Intent.createChooser(shareIntent, "Forward task via"))
                             viewModel.delegate(t.id)
                         },
                         onIgnore = { reason -> viewModel.ignore(t.id, reason) }
@@ -116,7 +116,7 @@ class EnforcementOverlayActivity : ComponentActivity() {
 
 // ─── Composable UI ────────────────────────────────────────────────────────────
 
-enum class OverlaySubView { NONE, SCHEDULE, IGNORE }
+enum class OverlaySubView { NONE, SCHEDULE, DELEGATE, IGNORE }
 
 @Composable
 fun EnforcementOverlayScreen(
@@ -127,6 +127,12 @@ fun EnforcementOverlayScreen(
     onDelegate: () -> Unit,
     onIgnore: (String) -> Unit
 ) {
+    // Derive scheduled-for label if already scheduled
+    val scheduledLabel = task.scheduledFor?.let { sf ->
+        if (sf > System.currentTimeMillis())
+            "⏰ Reminder set for: " + java.text.SimpleDateFormat("EEE dd MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(sf))
+        else null
+    }
     var subView by remember { mutableStateOf(OverlaySubView.NONE) }
     var ignoreReason by remember { mutableStateOf("") }
 
@@ -212,8 +218,26 @@ fun EnforcementOverlayScreen(
                             val hours = remaining / 3_600_000
                             val mins  = (remaining % 3_600_000) / 60_000
                             Text(text = "(${hours}h ${mins}m left)", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                        } else {
+                            Text(text = "(deadline passed)", color = Color(0xFFFF4444), fontSize = 12.sp)
                         }
                     }
+                }
+            }
+            // ── Scheduled reminder badge ──────────────────────────────────────
+            scheduledLabel?.let { sl ->
+                Surface(
+                    color = Color(0xFF2196F3).copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFF2196F3).copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = sl,
+                        color = Color(0xFF64B5F6),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
                 }
             }
 
@@ -244,7 +268,14 @@ fun EnforcementOverlayScreen(
             AnimatedContent(targetState = subView, label = "subview") { sv ->
                 when (sv) {
                     OverlaySubView.SCHEDULE -> ScheduleSubView(
-                        onConfirm = { onSchedule(it); subView = OverlaySubView.NONE },
+                        deadlineCap = task.deadlineTimestamp,
+                        onConfirm   = { onSchedule(it); subView = OverlaySubView.NONE },
+                        onCancel    = { subView = OverlaySubView.NONE }
+                    )
+                    OverlaySubView.DELEGATE -> DelegateSubView(
+                        taskText  = task.extractedTask,
+                        deadline  = task.deadline,
+                        onConfirm = { onDelegate(); subView = OverlaySubView.NONE },
                         onCancel  = { subView = OverlaySubView.NONE }
                     )
                     OverlaySubView.IGNORE -> IgnoreSubView(
@@ -257,7 +288,7 @@ fun EnforcementOverlayScreen(
                         isEscalated = task.rescheduleCount >= 2,
                         onDoNow    = onDoNow,
                         onSchedule = { subView = OverlaySubView.SCHEDULE },
-                        onDelegate = onDelegate,
+                        onDelegate = { subView = OverlaySubView.DELEGATE },
                         onIgnore   = { subView = OverlaySubView.IGNORE }
                     )
                 }
@@ -292,6 +323,7 @@ private fun DecisionButtons(
                 modifier = Modifier.weight(1f),
                 emoji = "✅",
                 label = "DO NOW",
+                subtitle = "Open & handle it",
                 containerColor = Color(0xFF1B5E20),
                 borderColor = Color(0xFF4CAF50),
                 onClick = onDoNow
@@ -300,6 +332,7 @@ private fun DecisionButtons(
                 modifier = Modifier.weight(1f),
                 emoji = "📅",
                 label = "SCHEDULE",
+                subtitle = "Set a reminder",
                 containerColor = Color(0xFF0D3B6E),
                 borderColor = Color(0xFF2196F3),
                 onClick = onSchedule,
@@ -312,16 +345,18 @@ private fun DecisionButtons(
         ) {
             DecisionButton(
                 modifier = Modifier.weight(1f),
-                emoji = "👤",
-                label = "DELEGATE",
+                emoji = "↗️",
+                label = "FORWARD",
+                subtitle = "Send to someone else",
                 containerColor = Color(0xFF4A148C),
                 borderColor = Color(0xFFAB47BC),
                 onClick = onDelegate
             )
             DecisionButton(
                 modifier = Modifier.weight(1f),
-                emoji = "❌",
+                emoji = "🚫",
                 label = "IGNORE",
+                subtitle = "Not relevant to me",
                 containerColor = Color(0xFF3E0D0D),
                 borderColor = Color(0xFFFF4444),
                 onClick = onIgnore
@@ -335,6 +370,7 @@ private fun DecisionButton(
     modifier: Modifier,
     emoji: String,
     label: String,
+    subtitle: String = "",
     containerColor: Color,
     borderColor: Color,
     enabled: Boolean = true,
@@ -344,51 +380,91 @@ private fun DecisionButton(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = enabled, onClick = onClick),
-        color = containerColor,
+        color = if (enabled) containerColor else Color(0xFF1A1A2E),
         shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, if (enabled) borderColor else Color.Gray)
+        border = BorderStroke(1.dp, if (enabled) borderColor else Color.Gray.copy(alpha = 0.3f))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(text = emoji, fontSize = 24.sp)
+            Text(text = emoji, fontSize = 22.sp)
             Text(
                 text = label,
                 color = if (enabled) Color.White else Color.Gray,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    color = if (enabled) Color.White.copy(alpha = 0.5f) else Color.Gray.copy(alpha = 0.4f),
+                    fontSize = 9.sp,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 11.sp
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ScheduleSubView(onConfirm: (Long) -> Unit, onCancel: () -> Unit) {
+private fun ScheduleSubView(
+    deadlineCap: Long?,          // must schedule BEFORE this
+    onConfirm: (Long) -> Unit,
+    onCancel: () -> Unit
+) {
     val context = LocalContext.current
-    var selectedMs by remember { mutableStateOf(System.currentTimeMillis() + 3_600_000L) }
+    // Default: 1 hour from now, but not past the deadline
+    val defaultMs = run {
+        val oneHourOut = System.currentTimeMillis() + 3_600_000L
+        if (deadlineCap != null && deadlineCap < oneHourOut) deadlineCap - 60_000L else oneHourOut
+    }
+    var selectedMs by remember { mutableStateOf(defaultMs.coerceAtLeast(System.currentTimeMillis() + 60_000L)) }
+    var errorMsg   by remember { mutableStateOf<String?>(null) }
+
     val label = remember(selectedMs) {
         SimpleDateFormat("EEE, dd MMM yyyy HH:mm", Locale.getDefault()).format(Date(selectedMs))
     }
+    val deadlineLabel = deadlineCap?.let {
+        SimpleDateFormat("EEE, dd MMM HH:mm", Locale.getDefault()).format(Date(it))
+    }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("📅 Schedule Reminder", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+        deadlineLabel?.let { dl ->
+            Surface(
+                color = Color(0xFFFF8C00).copy(alpha = 0.10f),
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, Color(0xFFFF8C00).copy(alpha = 0.4f))
+            ) {
+                Text(
+                    "⚠️ Must be before task deadline: $dl",
+                    color = Color(0xFFFF8C00),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+        }
 
         Surface(
             color = Color(0xFF1A1A2E),
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, Color(0xFF2196F3))
+            border = BorderStroke(1.dp, if (errorMsg != null) Color(0xFFFF4444) else Color(0xFF2196F3))
         ) {
             Text(
                 text = label,
-                color = Color(0xFF64B5F6),
+                color = if (errorMsg != null) Color(0xFFFF4444) else Color(0xFF64B5F6),
                 fontSize = 15.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
             )
+        }
+
+        errorMsg?.let { err ->
+            Text(err, color = Color(0xFFFF4444), fontSize = 12.sp)
         }
 
         Button(
@@ -397,21 +473,70 @@ private fun ScheduleSubView(onConfirm: (Long) -> Unit, onCancel: () -> Unit) {
                 DatePickerDialog(context, { _, y, m, d ->
                     TimePickerDialog(context, { _, h, min ->
                         cal.set(y, m, d, h, min, 0)
-                        selectedMs = cal.timeInMillis
+                        val picked = cal.timeInMillis
+                        when {
+                            picked <= System.currentTimeMillis() ->
+                                errorMsg = "❌ Pick a future time"
+                            deadlineCap != null && picked > deadlineCap ->
+                                errorMsg = "❌ Must be before task deadline ($deadlineLabel)"
+                            else -> { selectedMs = picked; errorMsg = null }
+                        }
                     }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true).show()
                 }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
             modifier = Modifier.fillMaxWidth()
-        ) { Text("Pick Date & Time") }
+        ) { Text("🗓  Pick Date & Time") }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel", color = Color.White) }
             Button(
-                onClick = { onConfirm(selectedMs) },
+                onClick = { if (errorMsg == null) onConfirm(selectedMs) },
+                enabled = errorMsg == null,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                 modifier = Modifier.weight(1f)
             ) { Text("Confirm") }
+        }
+    }
+}
+
+@Composable
+private fun DelegateSubView(
+    taskText: String,
+    deadline: String?,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("↗️ Forward Task", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "This will open a share sheet so you can forward the task details to someone else via WhatsApp, email, or any other app.",
+            color = Color.White.copy(alpha = 0.65f),
+            fontSize = 13.sp,
+            lineHeight = 19.sp
+        )
+        Surface(
+            color = Color(0xFF4A148C).copy(alpha = 0.15f),
+            shape = RoundedCornerShape(10.dp),
+            border = BorderStroke(1.dp, Color(0xFFAB47BC).copy(alpha = 0.4f))
+        ) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Task: $taskText", color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                deadline?.let { Text("Deadline: $it", color = Color(0xFFFF8C00), fontSize = 12.sp) }
+            }
+        }
+        Text(
+            "After sharing, this task will be marked as Forwarded.",
+            color = Color.White.copy(alpha = 0.4f),
+            fontSize = 11.sp
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel", color = Color.White) }
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFAB47BC)),
+                modifier = Modifier.weight(1f)
+            ) { Text("Share & Forward") }
         }
     }
 }
