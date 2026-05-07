@@ -70,7 +70,8 @@ class TaskViewModel @Inject constructor(
         viewModelScope.launch {
             repository.updateDynamicPriorities()
         }
-        // ── Periodic sweep: every 60 s, move past-deadline tasks → MISSED ────────
+        // ── Periodic sweep: immediately then every 60 s ───────────────────────
+        // Moves past-deadline PENDING/IN_PROGRESS tasks → MISSED right away
         viewModelScope.launch {
             while (true) {
                 repository.sweepMissedTasks()

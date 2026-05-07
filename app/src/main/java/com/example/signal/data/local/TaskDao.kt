@@ -37,7 +37,7 @@ interface TaskDao {
      */
     @Query("""
         SELECT * FROM tasks
-        WHERE status NOT IN ('DONE','IGNORED')
+        WHERE status NOT IN ('DONE','IGNORED','MISSED')
         ORDER BY
           CASE importance
             WHEN 'CRITICAL' THEN 0
