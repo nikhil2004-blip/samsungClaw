@@ -83,8 +83,11 @@ class NotificationInterceptorService : NotificationListenerService() {
 
         serviceScope.launch {
             try {
+                // ── Direct Classification via Groq AI ──────────────────────
+                Log.d(TAG, "🤖 Processing [${notificationData.sourceApp}] via Groq AI")
                 val classified = groqClassifier.classify(notificationData)
-                Log.i(TAG, "✅ Classified [${notificationData.sourceApp}] → " +
+
+                Log.i(TAG, "✅ Final [${notificationData.sourceApp}] → " +
                         "category=${classified.category.name} importance=${classified.importance.name}")
 
                 // Repository handles:
