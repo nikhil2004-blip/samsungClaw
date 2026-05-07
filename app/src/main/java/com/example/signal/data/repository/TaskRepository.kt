@@ -26,11 +26,18 @@ class TaskRepository @Inject constructor(
     suspend fun insertFromClassified(
         notificationData: com.example.signal.data.model.NotificationData,
         classified: ClassifiedTask
-    ) {
+    ): TaskEntity {
         // Promotional notifications are auto-ignored — they never surface in the main board
         val autoIgnorePromo = classified.category == TaskCategory.PROMOTIONAL &&
                 !classified.requiresEnforcement
-        val initialStatus = if (autoIgnorePromo) TaskStatus.IGNORED.name else TaskStatus.PENDING.name
+        val isAlreadyMissed = classified.deadlineTimestamp != null &&
+                classified.deadlineTimestamp <= notificationData.capturedAt
+        val initialStatus = when {
+            autoIgnorePromo -> TaskStatus.IGNORED.name
+            isAlreadyMissed -> TaskStatus.MISSED.name
+            else -> TaskStatus.PENDING.name
+        }
+        val storedRequiresEnforcement = classified.requiresEnforcement && !isAlreadyMissed
 
         val entity = TaskEntity(
             id = notificationData.id,
@@ -51,7 +58,7 @@ class TaskRepository @Inject constructor(
             scheduledFor = null,
             decidedAt = if (autoIgnorePromo) System.currentTimeMillis() else null,
             completedAt = null,
-            requiresEnforcement = classified.requiresEnforcement,
+            requiresEnforcement = storedRequiresEnforcement,
             isOverdue = false,
             rescheduleCount = 0
         )
@@ -60,6 +67,7 @@ class TaskRepository @Inject constructor(
         // ── Auto-add MEETING tasks to device calendar ──────────────────────────
         if (classified.category == TaskCategory.MEETING &&
             classified.deadlineTimestamp != null &&
+            !isAlreadyMissed &&
             CalendarHelper.hasCalendarPermission(context)
         ) {
             CalendarHelper.insertMeetingEvent(
@@ -69,6 +77,8 @@ class TaskRepository @Inject constructor(
                 startMs = classified.deadlineTimestamp
             )
         }
+
+        return entity
     }
 
     suspend fun insertManualTask(task: TaskEntity) = dao.insertTask(task)

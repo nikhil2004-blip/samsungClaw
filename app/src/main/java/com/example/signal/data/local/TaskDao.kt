@@ -90,7 +90,7 @@ interface TaskDao {
     @Query("SELECT COUNT(*) FROM tasks WHERE userDecision = 'IGNORE' AND capturedAt >= :startOfDay")
     suspend fun getTodayIgnoredCount(startOfDay: Long): Int
 
-    @Query("SELECT COUNT(*) FROM tasks WHERE deadlineTimestamp < :now AND status != 'DONE'")
+    @Query("SELECT COUNT(*) FROM tasks WHERE deadlineTimestamp < :now AND status NOT IN ('DONE','MISSED')")
     suspend fun getOverdueCount(now: Long): Int
 
     @Query("SELECT * FROM tasks WHERE capturedAt >= :startOfWeek ORDER BY capturedAt ASC")

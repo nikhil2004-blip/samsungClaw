@@ -107,9 +107,9 @@ class NotificationInterceptorService : NotificationListenerService() {
                 // Repository handles:
                 //  • auto-ignore for PROMOTIONAL
                 //  • calendar event insertion for MEETING
-                taskRepository.insertFromClassified(notificationData, classified)
+                val insertedTask = taskRepository.insertFromClassified(notificationData, classified)
 
-                if (classified.requiresEnforcement) {
+                if (classified.requiresEnforcement && insertedTask.status != "MISSED") {
                     val intent = Intent(applicationContext, EnforcementOverlayActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                         putExtra(EnforcementOverlayActivity.EXTRA_TASK_ID, notificationData.id)
