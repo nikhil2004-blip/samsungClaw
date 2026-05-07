@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.signal.data.local.TaskEntity
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 // ── Priority helpers ───────────────────────────────────────────────────────────
 
@@ -135,6 +136,7 @@ fun TaskBoardScreen(viewModel: TaskViewModel = hiltViewModel()) {
                             TaskFilter.MESSAGES      -> state.messages.size
                             TaskFilter.PAYMENTS      -> state.payments.size
                             TaskFilter.REMINDERS     -> state.reminders.size
+                            TaskFilter.MISSED        -> state.missed.size
                             TaskFilter.ADVERTS       -> state.adverts.size
                             TaskFilter.OTHER         -> state.other.size
                         }
@@ -171,13 +173,19 @@ fun TaskBoardScreen(viewModel: TaskViewModel = hiltViewModel()) {
 
         val displayList = state.currentList()
 
-        if (displayList.isEmpty() && state.done.isEmpty() && state.selectedFilter != TaskFilter.ALL) {
+        if (state.selectedFilter == TaskFilter.MISSED) {
+            // Missed tab — dedicated view with "I did this" restore button
+            MissedView(
+                tasks      = state.missed,
+                padding    = padding,
+                onDidThis  = viewModel::markMissedAsDone
+            )
+        } else if (displayList.isEmpty() && state.done.isEmpty() && state.selectedFilter != TaskFilter.ALL) {
             EmptyPartition(
                 filter = state.selectedFilter,
                 modifier = Modifier.padding(padding)
             )
         } else if (state.selectedFilter == TaskFilter.ALL) {
-            // ALL tab — show sections: Overdue | Critical&High | In-Progress | Pending | Done
             AllMessagesView(
                 state       = state,
                 padding     = padding,
@@ -186,7 +194,6 @@ fun TaskBoardScreen(viewModel: TaskViewModel = hiltViewModel()) {
                 onMarkDone  = viewModel::markDone
             )
         } else {
-            // Partition tab — flat priority-sorted list
             PartitionView(
                 tasks       = displayList,
                 filter      = state.selectedFilter,
@@ -542,6 +549,180 @@ private fun TaskCard(
         }
     }
 }
+
+// ── Missed tab ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun MissedView(
+    tasks: List<TaskEntity>,
+    padding: PaddingValues,
+    onDidThis: (String) -> Unit
+) {
+    if (tasks.isEmpty()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("🌟", fontSize = 64.sp)
+                Text("Nothing missed!", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Tasks whose deadline passed will appear here",
+                    color = Color.White.copy(alpha = 0.5f),
+                    fontSize = 13.sp
+                )
+            }
+        }
+        return
+    }
+
+    LazyColumn(
+        contentPadding = PaddingValues(
+            start = 16.dp, end = 16.dp,
+            top   = padding.calculateTopPadding() + 8.dp,
+            bottom = 80.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Warning banner
+        item {
+            Surface(
+                color  = Color(0xFFFF8C00).copy(alpha = 0.12f),
+                shape  = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, Color(0xFFFF8C00).copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("😶‍🌫️", fontSize = 22.sp)
+                    Column {
+                        Text(
+                            "These passed without action",
+                            color = Color(0xFFFF8C00),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Tap \"I did this\" if you handled it offline",
+                            color = Color(0xFFFF8C00).copy(alpha = 0.7f),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        items(tasks.distinctBy { it.id }, key = { "missed_${it.id}" }) { task ->
+            MissedCard(task = task, onDidThis = { onDidThis(task.id) })
+        }
+    }
+}
+
+@Composable
+private fun MissedCard(task: TaskEntity, onDidThis: () -> Unit) {
+    val catEmoji = categoryEmoji(task.category)
+    val missedAgo = task.deadlineTimestamp?.let { ts ->
+        val diffMs = System.currentTimeMillis() - ts
+        val hours  = TimeUnit.MILLISECONDS.toHours(diffMs)
+        val mins   = TimeUnit.MILLISECONDS.toMinutes(diffMs) % 60
+        when {
+            hours >= 24 -> "${TimeUnit.MILLISECONDS.toDays(diffMs)}d ago"
+            hours > 0   -> "${hours}h ${mins}m ago"
+            else        -> "${mins}m ago"
+        }
+    } ?: "deadline passed"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        shape  = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color(0xFFFF8C00).copy(alpha = 0.35f))
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Category icon
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFF8C00).copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center
+                ) { Text(catEmoji, fontSize = 17.sp) }
+
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = task.extractedTask,
+                        color = Color.White.copy(alpha = 0.75f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2
+                    )
+                    Text(
+                        text = task.sourceApp,
+                        color = Color.White.copy(alpha = 0.35f),
+                        fontSize = 11.sp
+                    )
+                }
+
+                // "Missed X ago" badge
+                Surface(
+                    color  = Color(0xFFFF8C00).copy(alpha = 0.12f),
+                    shape  = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFFFF8C00).copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = missedAgo,
+                        color = Color(0xFFFF8C00),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            // Deadline label
+            task.deadline?.let { dl ->
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Schedule, null,
+                        tint = Color(0xFFFF4444),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(dl, color = Color(0xFFFF4444), fontSize = 11.sp)
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // "I did this" button
+            Button(
+                onClick = onDidThis,
+                colors  = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50).copy(alpha = 0.15f)),
+                border  = BorderStroke(1.dp, Color(0xFF4CAF50)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("I did this  ✓", color = Color(0xFF4CAF50), fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+// ── Empty / Completed states ───────────────────────────────────────────────────
 
 @Composable
 private fun EmptyState(modifier: Modifier = Modifier) {

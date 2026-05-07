@@ -85,6 +85,7 @@ class TaskRepository @Inject constructor(
     fun getTasksByCategory(category: String): Flow<List<TaskEntity>> =
         dao.getTasksByCategory(category)
     fun getPromotionalTasks(): Flow<List<TaskEntity>> = dao.getPromotionalTasks()
+    fun getMissedTasks(): Flow<List<TaskEntity>> = dao.getMissedTasks()
 
     suspend fun getTaskById(id: String): TaskEntity? = dao.getTaskById(id)
     fun observeTaskById(id: String) = dao.observeTaskById(id)
@@ -115,6 +116,18 @@ class TaskRepository @Inject constructor(
         dao.markOverdueTasks(now)
         dao.updateDynamicPriorities(now)
     }
+
+    /**
+     * Sweep past-deadline tasks into MISSED.
+     * Call this periodically (e.g. every minute) from the ViewModel.
+     */
+    suspend fun sweepMissedTasks() {
+        dao.sweepMissedTasks(System.currentTimeMillis())
+    }
+
+    /** User taps "I did this" on a missed task — moves it to DONE (translucent). */
+    suspend fun markMissedAsDone(taskId: String) =
+        dao.markMissedAsDone(taskId, System.currentTimeMillis())
 
     suspend fun updateDynamicPriorities() {
         dao.updateDynamicPriorities(System.currentTimeMillis())

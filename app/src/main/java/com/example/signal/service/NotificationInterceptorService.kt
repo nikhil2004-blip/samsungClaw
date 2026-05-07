@@ -29,14 +29,28 @@ class NotificationInterceptorService : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         blockedPackages = setOf(
-            packageName,
+            packageName,                          // Signal app itself
             "android",
             "com.android.systemui",
             "com.android.phone",
             "com.android.launcher3",
             "com.google.android.gms",
             "com.samsung.android.lool",
-            "com.sec.android.app.launcher"
+            "com.sec.android.app.launcher",
+
+            // ── Calendar apps (we write to these, so their reminders must be ignored) ──
+            "com.google.android.calendar",        // Google Calendar
+            "com.android.calendar",               // AOSP Calendar
+            "com.samsung.android.calendar",       // Samsung Calendar
+            "com.huawei.calendar",                // Huawei Calendar
+            "com.coloros.calendar",               // Oppo/Realme Calendar
+            "com.oneplus.calendar",               // OnePlus Calendar
+            "com.miui.calendar",                  // Xiaomi Calendar
+
+            // ── Other system noise sources ──
+            "com.android.providers.calendar",     // Calendar data provider
+            "com.android.deskclock",              // Alarms/reminders
+            "com.google.android.deskclock"        // Google Clock reminders
         )
     }
 

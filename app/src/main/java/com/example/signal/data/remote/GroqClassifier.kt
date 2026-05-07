@@ -23,10 +23,10 @@ class GroqClassifier @Inject constructor(
         private const val SYSTEM_PROMPT = """You are a notification classification AI. Analyze the notification below and return ONLY a valid JSON object with no markdown, no explanation, no backticks.
 
 CRITICAL INSTRUCTIONS FOR IMPORTANCE:
-1. You MUST factor in temporal urgency. The "Received" timestamp is the current time.
-2. If a deadline or event is more than 3 days in the future, assign "low" or "medium" importance.
-3. If a deadline or event is today or tomorrow, assign "high" or "critical" importance.
-4. Promotional messages, ads, and general marketing should ALWAYS be "category": "promotional" and "importance": "low", and "requiresEnforcement": false.
+1. TEMPORAL URGENCY IS SUPREME: If a meeting, deadline, or task is happening TODAY or within the next 24 hours, it MUST be "importance": "critical" or "high" and "requiresEnforcement": true.
+2. DISREGARD TONE: Do not let informal language (e.g., "hey", "yu", "bro") fool you. If the content describes a meeting or a task due today, it is important.
+3. FUTURE EVENTS: If a deadline or event is more than 3 days in the future, assign "low" or "medium" importance.
+4. PROMOTIONAL: Ads and marketing should ALWAYS be "category": "promotional", "importance": "low", and "requiresEnforcement": false.
 
 JSON schema:
 {

@@ -4,5 +4,6 @@ enum class TaskStatus {
     PENDING,
     IN_PROGRESS,
     DONE,
-    IGNORED
+    IGNORED,
+    MISSED          // deadline passed without user action
 }

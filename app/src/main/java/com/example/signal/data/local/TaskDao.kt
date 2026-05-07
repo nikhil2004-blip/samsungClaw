@@ -62,8 +62,12 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE status = 'IGNORED' AND category != 'PROMOTIONAL' ORDER BY capturedAt DESC")
     fun getIgnoredTasks(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE isOverdue = 1 AND status != 'DONE' ORDER BY deadlineTimestamp ASC")
+    @Query("SELECT * FROM tasks WHERE isOverdue = 1 AND status NOT IN ('DONE','MISSED') ORDER BY deadlineTimestamp ASC")
     fun getOverdueTasks(): Flow<List<TaskEntity>>
+
+    /** Tasks whose deadline has passed and were never actioned — shown in the Missed tab */
+    @Query("SELECT * FROM tasks WHERE status = 'MISSED' ORDER BY deadlineTimestamp DESC")
+    fun getMissedTasks(): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE category = :category ORDER BY capturedAt DESC")
     fun getTasksByCategory(category: String): Flow<List<TaskEntity>>
@@ -112,8 +116,20 @@ interface TaskDao {
     @Query("UPDATE tasks SET scheduledFor = :scheduledFor, rescheduleCount = rescheduleCount + 1 WHERE id = :taskId")
     suspend fun updateSchedule(taskId: String, scheduledFor: Long)
 
-    @Query("UPDATE tasks SET isOverdue = 1 WHERE deadlineTimestamp < :now AND status != 'DONE'")
+    @Query("UPDATE tasks SET isOverdue = 1 WHERE deadlineTimestamp < :now AND status NOT IN ('DONE','MISSED','IGNORED')")
     suspend fun markOverdueTasks(now: Long)
+
+    /**
+     * Sweep: any task whose deadline is more than [gracePeriodMs] in the past
+     * and is still PENDING / IN_PROGRESS gets flipped to MISSED.
+     * Default grace = 0 ms (exact deadline).
+     */
+    @Query("UPDATE tasks SET status = 'MISSED' WHERE deadlineTimestamp IS NOT NULL AND deadlineTimestamp < :cutoff AND status NOT IN ('DONE','MISSED','IGNORED')")
+    suspend fun sweepMissedTasks(cutoff: Long)
+
+    /** User says "I did this" — move from MISSED to DONE */
+    @Query("UPDATE tasks SET status = 'DONE', completedAt = :now WHERE id = :taskId")
+    suspend fun markMissedAsDone(taskId: String, now: Long)
 
     @Query("UPDATE tasks SET status = 'DONE', completedAt = :now WHERE id = :taskId")
     suspend fun markDone(taskId: String, now: Long)
