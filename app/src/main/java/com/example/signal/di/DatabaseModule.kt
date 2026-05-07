@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.signal.data.local.AppDatabase
 import com.example.signal.data.repository.TaskRepository
+import com.example.signal.data.repository.TaskRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,5 +30,5 @@ object DatabaseModule {
     fun provideTaskRepository(
         db: AppDatabase,
         @ApplicationContext context: Context
-    ): TaskRepository = TaskRepository(db, context)
+    ): TaskRepository = TaskRepositoryImpl(db, context)
 }

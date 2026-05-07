@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.work.*
-import com.example.signal.data.repository.OnboardingRepository
+import com.example.signal.data.repository.OnboardingRepositoryInterface
 import com.example.signal.ui.navigation.MainNavigation
 import com.example.signal.ui.onboarding.OnboardingScreen
 import com.example.signal.ui.theme.SignalTheme
@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     @Inject
-    lateinit var onboardingRepository: OnboardingRepository
+    lateinit var onboardingRepository: OnboardingRepositoryInterface
 
     // ── Calendar permission request ────────────────────────────────────────────
     private val calendarPermissionLauncher =

@@ -19,14 +19,14 @@ private val Context.dataStore by preferencesDataStore(name = ONBOARDING_PREFEREN
 @Singleton
 class OnboardingRepository @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : OnboardingRepositoryInterface {
     private val onboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
 
-    val onboardingCompleted: Flow<Boolean> = context.dataStore.data
+    override val onboardingCompleted: Flow<Boolean> = context.dataStore.data
         .catch { emit(emptyPreferences()) }
         .map { preferences: Preferences -> preferences[onboardingCompletedKey] ?: false }
 
-    suspend fun setOnboardingCompleted(completed: Boolean) {
+    override suspend fun setOnboardingCompleted(completed: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[onboardingCompletedKey] = completed
         }

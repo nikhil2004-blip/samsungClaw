@@ -66,7 +66,7 @@ Received: $timestamp (${TimeZone.getDefault().id})"""
                 }
 
             Log.d(TAG, "Groq raw response: $content")
-            parseResponse(notificationData.id, content)
+            parseResponse(notificationData, content)
 
         } catch (e: Exception) {
             Log.e(TAG, "Groq classification failed: ${e.message}", e)
@@ -74,7 +74,8 @@ Received: $timestamp (${TimeZone.getDefault().id})"""
         }
     }
 
-    private fun parseResponse(notificationId: String, json: String): ClassifiedTask {
+    private fun parseResponse(notificationData: NotificationData, json: String): ClassifiedTask {
+        val notificationId = notificationData.id
         return try {
             // Strip any accidental markdown fences
             val clean = json.trim()
@@ -123,16 +124,7 @@ Received: $timestamp (${TimeZone.getDefault().id})"""
 
         } catch (e: Exception) {
             Log.e(TAG, "JSON parse failed: ${e.message}")
-            ClassifiedTask(
-                notificationId = notificationId,
-                importance = ImportanceLevel.MEDIUM,
-                category = TaskCategory.OTHER,
-                task = "Review this notification",
-                deadline = null,
-                deadlineTimestamp = null,
-                suggestedActions = listOf("Open App", "Review Later"),
-                requiresEnforcement = false
-            )
+            fallback(notificationData)
         }
     }
 
