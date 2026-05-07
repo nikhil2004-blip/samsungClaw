@@ -54,13 +54,18 @@ class MainActivity : ComponentActivity() {
         // Kick off daily overdue scan
         WorkManagerHelper.scheduleOverdueScan(applicationContext)
 
-        // Request calendar permissions (gracefully — user can deny)
-        calendarPermissionLauncher.launch(
-            arrayOf(
-                Manifest.permission.READ_CALENDAR,
-                Manifest.permission.WRITE_CALENDAR
+        // Request calendar permissions only if not already granted
+        val hasRead = androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val hasWrite = androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        
+        if (!hasRead || !hasWrite) {
+            calendarPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.READ_CALENDAR,
+                    Manifest.permission.WRITE_CALENDAR
+                )
             )
-        )
+        }
 
         setContent {
             SignalTheme {

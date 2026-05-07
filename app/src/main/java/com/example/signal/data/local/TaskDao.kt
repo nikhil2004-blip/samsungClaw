@@ -120,6 +120,18 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks")
     suspend fun clearAll()
+
+    @Query("""
+        UPDATE tasks 
+        SET importance = CASE 
+            WHEN deadlineTimestamp < :now + 86400000 THEN 'CRITICAL'
+            WHEN deadlineTimestamp < :now + 259200000 THEN 'HIGH'
+            WHEN deadlineTimestamp < :now + 604800000 THEN 'MEDIUM'
+            ELSE 'LOW'
+        END
+        WHERE deadlineTimestamp IS NOT NULL AND status NOT IN ('DONE', 'IGNORED')
+    """)
+    suspend fun updateDynamicPriorities(now: Long)
 }
 
 // Helper for top-ignored category query

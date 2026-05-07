@@ -62,6 +62,12 @@ class TaskViewModel @Inject constructor(
     private val _searchQuery    = MutableStateFlow("")
     private val _selectedFilter = MutableStateFlow(TaskFilter.ALL)
 
+    init {
+        viewModelScope.launch {
+            repository.updateDynamicPriorities()
+        }
+    }
+
     // ── Combine all sources cleanly ────────────────────────────────────────────
     val uiState: StateFlow<TaskBoardUiState> =
         combine(

@@ -110,9 +110,15 @@ class TaskRepository @Inject constructor(
     suspend fun markDone(taskId: String) =
         dao.markDone(taskId, System.currentTimeMillis())
 
-    suspend fun markOverdueTasks() = dao.markOverdueTasks(System.currentTimeMillis())
+    suspend fun markOverdueTasks() {
+        val now = System.currentTimeMillis()
+        dao.markOverdueTasks(now)
+        dao.updateDynamicPriorities(now)
+    }
 
-    // ── Dashboard ──────────────────────────────────────────────────────────────
+    suspend fun updateDynamicPriorities() {
+        dao.updateDynamicPriorities(System.currentTimeMillis())
+    }
 
     suspend fun getTodayCount(startOfDay: Long) = dao.getTodayCount(startOfDay)
     suspend fun getTodayActionedCount(startOfDay: Long) = dao.getTodayActionedCount(startOfDay)
