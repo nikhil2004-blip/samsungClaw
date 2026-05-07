@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="app/src/main/res/drawable/ic_launcher_foreground.xml" width="100" alt="SIGNAL Icon" />
+<img src="image.png" width="100" alt="SIGNAL Icon" />
 
 # SIGNAL
 ### AI-Powered Notification Intelligence & Decision Enforcement
