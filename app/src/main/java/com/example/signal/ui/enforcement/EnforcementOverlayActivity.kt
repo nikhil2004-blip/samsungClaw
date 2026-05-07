@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -431,7 +432,7 @@ private fun IgnoreSubView(
             value = reason,
             onValueChange = onReasonChange,
             placeholder = { Text("Enter your reason...", color = Color.White.copy(alpha = 0.3f)) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag("IgnoreReasonField"),
             minLines = 3,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
