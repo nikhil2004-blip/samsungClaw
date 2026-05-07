@@ -30,6 +30,26 @@ interface TaskDao {
     @Query("SELECT * FROM tasks ORDER BY capturedAt DESC")
     fun getAllTasks(): Flow<List<TaskEntity>>
 
+    /**
+     * All active (non-ignored, non-done) tasks sorted by:
+     *   1. Priority: CRITICAL(0) > HIGH(1) > MEDIUM(2) > LOW(3)
+     *   2. Then deadline ASC (tasks with no deadline go last)
+     */
+    @Query("""
+        SELECT * FROM tasks
+        WHERE status NOT IN ('DONE','IGNORED')
+        ORDER BY
+          CASE importance
+            WHEN 'CRITICAL' THEN 0
+            WHEN 'HIGH'     THEN 1
+            WHEN 'MEDIUM'   THEN 2
+            ELSE                 3
+          END ASC,
+          CASE WHEN deadlineTimestamp IS NULL THEN 1 ELSE 0 END ASC,
+          deadlineTimestamp ASC
+    """)
+    fun getAllTasksSortedByPriority(): Flow<List<TaskEntity>>
+
     @Query("SELECT * FROM tasks WHERE status = 'PENDING' ORDER BY CASE WHEN deadlineTimestamp IS NULL THEN 1 ELSE 0 END, deadlineTimestamp ASC")
     fun getPendingTasks(): Flow<List<TaskEntity>>
 
@@ -39,7 +59,7 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE status = 'DONE' ORDER BY completedAt DESC")
     fun getDoneTasks(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE status = 'IGNORED' ORDER BY capturedAt DESC")
+    @Query("SELECT * FROM tasks WHERE status = 'IGNORED' AND category != 'PROMOTIONAL' ORDER BY capturedAt DESC")
     fun getIgnoredTasks(): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE isOverdue = 1 AND status != 'DONE' ORDER BY deadlineTimestamp ASC")
@@ -47,6 +67,10 @@ interface TaskDao {
 
     @Query("SELECT * FROM tasks WHERE category = :category ORDER BY capturedAt DESC")
     fun getTasksByCategory(category: String): Flow<List<TaskEntity>>
+
+    /** Promotional / Advert tasks (auto-ignored) — shown in the Adverts tab */
+    @Query("SELECT * FROM tasks WHERE category = 'PROMOTIONAL' ORDER BY capturedAt DESC")
+    fun getPromotionalTasks(): Flow<List<TaskEntity>>
 
     // ── Dashboard / analytics queries ─────────────────────────────────────────
 

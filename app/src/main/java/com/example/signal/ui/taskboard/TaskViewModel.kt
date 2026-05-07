@@ -9,14 +9,50 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// ── Filter chip definitions ────────────────────────────────────────────────────
+enum class TaskFilter(val label: String, val emoji: String) {
+    ALL("All Messages", "📬"),
+    HIGH_PRIORITY("Priority", "🔴"),
+    DEADLINES("Deadlines", "⏰"),
+    MEETINGS("Meetings", "🤝"),
+    MESSAGES("Messages", "💬"),
+    PAYMENTS("Payments", "💳"),
+    REMINDERS("Reminders", "🔔"),
+    ADVERTS("Adverts", "🏷️"),
+    OTHER("Other", "📌")
+}
+
 data class TaskBoardUiState(
-    val overdue: List<TaskEntity>     = emptyList(),
-    val pending: List<TaskEntity>     = emptyList(),
-    val inProgress: List<TaskEntity>  = emptyList(),
-    val done: List<TaskEntity>        = emptyList(),
-    val searchQuery: String           = "",
-    val selectedFilter: String        = "All"
-)
+    val allMessages: List<TaskEntity>   = emptyList(),
+    val highPriority: List<TaskEntity>  = emptyList(),
+    val deadlines: List<TaskEntity>     = emptyList(),
+    val meetings: List<TaskEntity>      = emptyList(),
+    val messages: List<TaskEntity>      = emptyList(),
+    val payments: List<TaskEntity>      = emptyList(),
+    val reminders: List<TaskEntity>     = emptyList(),
+    val adverts: List<TaskEntity>       = emptyList(),
+    val other: List<TaskEntity>         = emptyList(),
+    // Board sections shown in the ALL tab
+    val overdue: List<TaskEntity>       = emptyList(),
+    val pending: List<TaskEntity>       = emptyList(),
+    val inProgress: List<TaskEntity>    = emptyList(),
+    val done: List<TaskEntity>          = emptyList(),
+    val searchQuery: String             = "",
+    val selectedFilter: TaskFilter      = TaskFilter.ALL
+) {
+    /** Returns the list appropriate for the selected filter tab. */
+    fun currentList(): List<TaskEntity> = when (selectedFilter) {
+        TaskFilter.ALL           -> allMessages
+        TaskFilter.HIGH_PRIORITY -> highPriority
+        TaskFilter.DEADLINES     -> deadlines
+        TaskFilter.MEETINGS      -> meetings
+        TaskFilter.MESSAGES      -> messages
+        TaskFilter.PAYMENTS      -> payments
+        TaskFilter.REMINDERS     -> reminders
+        TaskFilter.ADVERTS       -> adverts
+        TaskFilter.OTHER         -> other
+    }
+}
 
 @HiltViewModel
 class TaskViewModel @Inject constructor(
@@ -24,54 +60,65 @@ class TaskViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _searchQuery    = MutableStateFlow("")
-    private val _selectedFilter = MutableStateFlow("All")
+    private val _selectedFilter = MutableStateFlow(TaskFilter.ALL)
 
-    val uiState: StateFlow<TaskBoardUiState> = combine(
-        repository.getOverdueTasks(),
-        repository.getPendingTasks(),
-        repository.getInProgressTasks(),
-        repository.getDoneTasks(),
-        _searchQuery,
-        _selectedFilter
-    ) { args ->
-        @Suppress("UNCHECKED_CAST")
-        val overdue  = args[0] as List<TaskEntity>
-        val pending  = args[1] as List<TaskEntity>
-        val progress = args[2] as List<TaskEntity>
-        val done     = args[3] as List<TaskEntity>
-        val query    = args[4] as String
-        val filter   = args[5] as String
-
-        fun List<TaskEntity>.applyFilters(): List<TaskEntity> = this
-            .filter { task ->
-                filter == "All" || task.category.equals(
-                    when (filter) {
-                        "Deadlines" -> "DEADLINE"
-                        "Meetings"  -> "MEETING"
-                        "Payments"  -> "PAYMENT"
-                        "Messages"  -> "MESSAGE"
-                        else        -> filter.uppercase()
-                    }, ignoreCase = true
-                )
+    // ── Combine all sources cleanly ────────────────────────────────────────────
+    val uiState: StateFlow<TaskBoardUiState> =
+        combine(
+            combine(
+                repository.getAllTasksSortedByPriority(),
+                repository.getOverdueTasks(),
+                repository.getPendingTasks(),
+                repository.getInProgressTasks()
+            ) { all, overdue, pending, inProgress ->
+                Triple(all, overdue, Triple(pending, inProgress, Unit))
+            },
+            combine(
+                repository.getDoneTasks(),
+                repository.getPromotionalTasks(),
+                _searchQuery,
+                _selectedFilter
+            ) { done, promos, query, filter ->
+                Triple(done, promos, Pair(query, filter))
             }
-            .filter { task ->
-                query.isBlank() ||
-                task.extractedTask.contains(query, ignoreCase = true) ||
-                task.sourceApp.contains(query, ignoreCase = true)
+        ) { left, right ->
+            val allActive  = left.first
+            val overdue    = left.second
+            val pending    = left.third.first
+            val inProgress = left.third.second
+
+            val done    = right.first
+            val promos  = right.second
+            val query   = right.third.first
+            val filter  = right.third.second
+
+            fun List<TaskEntity>.search() = if (query.isBlank()) this else filter { t ->
+                t.extractedTask.contains(query, ignoreCase = true) ||
+                t.sourceApp.contains(query, ignoreCase = true)    ||
+                t.originalTitle.contains(query, ignoreCase = true)
             }
 
-        TaskBoardUiState(
-            overdue       = overdue.applyFilters(),
-            pending       = pending.applyFilters(),
-            inProgress    = progress.applyFilters(),
-            done          = done.applyFilters(),
-            searchQuery   = query,
-            selectedFilter = filter
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TaskBoardUiState())
+            TaskBoardUiState(
+                allMessages   = allActive.search(),
+                highPriority  = allActive.filter { it.importance in listOf("CRITICAL", "HIGH") }.search(),
+                deadlines     = allActive.filter { it.category == "DEADLINE" }.search(),
+                meetings      = allActive.filter { it.category == "MEETING" }.search(),
+                messages      = allActive.filter { it.category == "MESSAGE" }.search(),
+                payments      = allActive.filter { it.category == "PAYMENT" }.search(),
+                reminders     = allActive.filter { it.category == "REMINDER" }.search(),
+                adverts       = promos.search(),
+                other         = allActive.filter { it.category == "OTHER" }.search(),
+                overdue       = overdue.search(),
+                pending       = pending.search(),
+                inProgress    = inProgress.search(),
+                done          = done.search(),
+                searchQuery   = query,
+                selectedFilter = filter
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TaskBoardUiState())
 
-    fun setSearchQuery(q: String)  { _searchQuery.value = q }
-    fun setFilter(filter: String)  { _selectedFilter.value = filter }
+    fun setSearchQuery(q: String)     { _searchQuery.value = q }
+    fun setFilter(f: TaskFilter)      { _selectedFilter.value = f }
 
     fun addManualTask(task: TaskEntity) {
         viewModelScope.launch { repository.insertManualTask(task) }
@@ -81,5 +128,6 @@ class TaskViewModel @Inject constructor(
         viewModelScope.launch { repository.markDone(taskId) }
     }
 
-    fun getSuggestedActions(task: TaskEntity) = repository.parseSuggestedActions(task.suggestedActions)
+    fun getSuggestedActions(task: TaskEntity) =
+        repository.parseSuggestedActions(task.suggestedActions)
 }

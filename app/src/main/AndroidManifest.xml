@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- ── Calendar Permissions (for writing meeting events) ────────────────── -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+
     <application
         android:name=".SignalApplication"
         android:allowBackup="true"

@@ -1,9 +1,11 @@
 package com.example.signal
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,12 +40,27 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var onboardingRepository: OnboardingRepository
 
+    // ── Calendar permission request ────────────────────────────────────────────
+    private val calendarPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            val granted = grants[Manifest.permission.WRITE_CALENDAR] == true
+            android.util.Log.d("MainActivity", "Calendar permission granted: $granted")
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         // Kick off daily overdue scan
         WorkManagerHelper.scheduleOverdueScan(applicationContext)
+
+        // Request calendar permissions (gracefully — user can deny)
+        calendarPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.READ_CALENDAR,
+                Manifest.permission.WRITE_CALENDAR
+            )
+        )
 
         setContent {
             SignalTheme {
@@ -52,8 +69,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 when (onboardingDone) {
-                    null -> LaunchSplash()
-                    true -> MainNavigation()
+                    null  -> LaunchSplash()
+                    true  -> MainNavigation()
                     false -> OnboardingScreen(onComplete = {
                         lifecycleScope.launch {
                             onboardingRepository.setOnboardingCompleted(true)
@@ -75,7 +92,10 @@ private fun LaunchSplash() {
             .background(gradient),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             CircularProgressIndicator(color = Color(0xFF6C63FF))
             Text(
                 text = "SIGNAL",

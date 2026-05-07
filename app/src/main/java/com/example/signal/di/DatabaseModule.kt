@@ -26,6 +26,8 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideTaskRepository(db: AppDatabase): TaskRepository =
-        TaskRepository(db)
+    fun provideTaskRepository(
+        db: AppDatabase,
+        @ApplicationContext context: Context
+    ): TaskRepository = TaskRepository(db, context)
 }

@@ -10,10 +10,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class GroqClassifier @Inject constructor() {
+class GroqClassifier @Inject constructor(
+    private val api: GroqApiService   // ← injected via NetworkModule, not a static object
+) {
 
     private val gson = Gson()
-    private val api = GroqRetrofitClient.service
 
     companion object {
         private const val TAG = "GroqClassifier"
@@ -51,14 +52,18 @@ Received: $timestamp"""
                 )
             )
 
+            Log.d(TAG, "Classifying notification from ${notificationData.sourceApp}")
             val response = api.classify(request)
             val content = response.choices.firstOrNull()?.message?.content
-                ?: return fallback(notificationData)
+                ?: return fallback(notificationData).also {
+                    Log.w(TAG, "Empty response from Groq — using fallback")
+                }
 
+            Log.d(TAG, "Groq raw response: $content")
             parseResponse(notificationData.id, content)
 
         } catch (e: Exception) {
-            Log.e(TAG, "Groq classification failed: ${e.message}")
+            Log.e(TAG, "Groq classification failed: ${e.message}", e)
             fallback(notificationData)
         }
     }
@@ -93,11 +98,10 @@ Received: $timestamp"""
                 ?.map { it.asString }
                 ?: emptyList()
 
-            // Parse ISO8601 deadline timestamp
             val deadlineTs = obj.get("deadlineTimestamp")?.takeIf { !it.isJsonNull }
                 ?.asString?.let { parseIso(it) }
 
-            ClassifiedTask(
+            val result = ClassifiedTask(
                 notificationId = notificationId,
                 importance = importance,
                 category = category,
@@ -107,6 +111,10 @@ Received: $timestamp"""
                 suggestedActions = actions,
                 requiresEnforcement = obj.get("requiresEnforcement")?.asBoolean ?: false
             )
+
+            Log.d(TAG, "Classified: category=${result.category} importance=${result.importance}")
+            result
+
         } catch (e: Exception) {
             Log.e(TAG, "JSON parse failed: ${e.message}")
             ClassifiedTask(

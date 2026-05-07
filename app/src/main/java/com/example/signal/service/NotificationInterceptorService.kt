@@ -24,6 +24,7 @@ class NotificationInterceptorService : NotificationListenerService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private lateinit var blockedPackages: Set<String>
+    private val processedNotifications = mutableMapOf<String, Long>()
 
     override fun onCreate() {
         super.onCreate()
@@ -55,6 +56,21 @@ class NotificationInterceptorService : NotificationListenerService() {
         // Skip empty notifications
         if (title.isBlank() && body.isBlank()) return
 
+        // Skip group summaries (to prevent duplicate handling of bundled notifications)
+        if ((sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0) return
+
+        val notificationHash = "$pkg:$title:$body"
+        val now = System.currentTimeMillis()
+        
+        // Clean up old hashes (older than 5 seconds)
+        processedNotifications.entries.removeIf { now - it.value > 5_000 }
+        
+        if (processedNotifications.containsKey(notificationHash)) {
+            Log.d(TAG, "Skipping duplicate notification: $title")
+            return
+        }
+        processedNotifications[notificationHash] = now
+
         val sourceApp = getAppName(pkg)
         val notificationData = NotificationData(
             id          = UUID.randomUUID().toString(),
@@ -62,12 +78,18 @@ class NotificationInterceptorService : NotificationListenerService() {
             packageName = pkg,
             title       = title,
             body        = body,
-            capturedAt  = System.currentTimeMillis()
+            capturedAt  = now
         )
 
         serviceScope.launch {
             try {
                 val classified = groqClassifier.classify(notificationData)
+                Log.i(TAG, "✅ Classified [${notificationData.sourceApp}] → " +
+                        "category=${classified.category.name} importance=${classified.importance.name}")
+
+                // Repository handles:
+                //  • auto-ignore for PROMOTIONAL
+                //  • calendar event insertion for MEETING
                 taskRepository.insertFromClassified(notificationData, classified)
 
                 if (classified.requiresEnforcement) {
@@ -78,7 +100,7 @@ class NotificationInterceptorService : NotificationListenerService() {
                     applicationContext.startActivity(intent)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to process notification: ${e.message}")
+                Log.e(TAG, "Failed to process notification from ${notificationData.sourceApp}: ${e.message}", e)
             }
         }
     }

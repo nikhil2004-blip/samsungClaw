@@ -109,6 +109,32 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             }
         )
 
+        // ── Calendar Integration ──────────────────────────────────────────────
+        SettingsSectionHeader("Calendar Integration")
+
+        var calendarSyncEnabled by remember { mutableStateOf(true) }
+        SettingsItem(
+            icon = "📅",
+            title = "Sync Meetings to Calendar",
+            subtitle = "Automatically add meeting notifications to your device calendar",
+            action = {
+                Switch(
+                    checked = calendarSyncEnabled,
+                    onCheckedChange = { calendarSyncEnabled = it },
+                    colors = SwitchDefaults.colors(checkedThumbColor = Color(0xFF6C63FF))
+                )
+            }
+        )
+
+        SettingsItem(
+            icon = "🔔",
+            title = "Meeting Reminder",
+            subtitle = "15-minute reminder added automatically to calendar events",
+            action = {
+                Text("15 min", color = Color(0xFF6C63FF), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        )
+
         // ── Data ──────────────────────────────────────────────────────────────
         SettingsSectionHeader("Data")
 

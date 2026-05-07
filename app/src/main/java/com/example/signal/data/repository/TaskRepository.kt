@@ -1,18 +1,22 @@
 package com.example.signal.data.repository
 
+import android.content.Context
 import com.example.signal.data.local.AppDatabase
 import com.example.signal.data.local.CategoryCount
 import com.example.signal.data.local.TaskEntity
 import com.example.signal.data.model.*
+import com.example.signal.utils.CalendarHelper
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class TaskRepository @Inject constructor(
-    private val db: AppDatabase
+    private val db: AppDatabase,
+    @ApplicationContext private val context: Context
 ) {
     private val dao = db.taskDao()
     private val gson = Gson()
@@ -23,6 +27,11 @@ class TaskRepository @Inject constructor(
         notificationData: com.example.signal.data.model.NotificationData,
         classified: ClassifiedTask
     ) {
+        // Promotional notifications are auto-ignored — they never surface in the main board
+        val autoIgnorePromo = classified.category == TaskCategory.PROMOTIONAL &&
+                !classified.requiresEnforcement
+        val initialStatus = if (autoIgnorePromo) TaskStatus.IGNORED.name else TaskStatus.PENDING.name
+
         val entity = TaskEntity(
             id = notificationData.id,
             sourceApp = notificationData.sourceApp,
@@ -36,17 +45,30 @@ class TaskRepository @Inject constructor(
             deadline = classified.deadline,
             deadlineTimestamp = classified.deadlineTimestamp,
             suggestedActions = gson.toJson(classified.suggestedActions),
-            status = TaskStatus.PENDING.name,
-            userDecision = null,
-            ignoreReason = null,
+            status = initialStatus,
+            userDecision = if (autoIgnorePromo) UserDecision.IGNORE.name else null,
+            ignoreReason = if (autoIgnorePromo) "Auto-ignored promotional" else null,
             scheduledFor = null,
-            decidedAt = null,
+            decidedAt = if (autoIgnorePromo) System.currentTimeMillis() else null,
             completedAt = null,
             requiresEnforcement = classified.requiresEnforcement,
             isOverdue = false,
             rescheduleCount = 0
         )
         dao.insertTask(entity)
+
+        // ── Auto-add MEETING tasks to device calendar ──────────────────────────
+        if (classified.category == TaskCategory.MEETING &&
+            classified.deadlineTimestamp != null &&
+            CalendarHelper.hasCalendarPermission(context)
+        ) {
+            CalendarHelper.insertMeetingEvent(
+                context = context,
+                title = classified.task.ifBlank { notificationData.title },
+                description = "From ${notificationData.sourceApp}: ${notificationData.body}",
+                startMs = classified.deadlineTimestamp
+            )
+        }
     }
 
     suspend fun insertManualTask(task: TaskEntity) = dao.insertTask(task)
@@ -54,6 +76,7 @@ class TaskRepository @Inject constructor(
     // ── Observe ────────────────────────────────────────────────────────────────
 
     fun getAllTasks(): Flow<List<TaskEntity>> = dao.getAllTasks()
+    fun getAllTasksSortedByPriority(): Flow<List<TaskEntity>> = dao.getAllTasksSortedByPriority()
     fun getPendingTasks(): Flow<List<TaskEntity>> = dao.getPendingTasks()
     fun getInProgressTasks(): Flow<List<TaskEntity>> = dao.getInProgressTasks()
     fun getDoneTasks(): Flow<List<TaskEntity>> = dao.getDoneTasks()
@@ -61,6 +84,7 @@ class TaskRepository @Inject constructor(
     fun getOverdueTasks(): Flow<List<TaskEntity>> = dao.getOverdueTasks()
     fun getTasksByCategory(category: String): Flow<List<TaskEntity>> =
         dao.getTasksByCategory(category)
+    fun getPromotionalTasks(): Flow<List<TaskEntity>> = dao.getPromotionalTasks()
 
     suspend fun getTaskById(id: String): TaskEntity? = dao.getTaskById(id)
     fun observeTaskById(id: String) = dao.observeTaskById(id)
@@ -69,10 +93,10 @@ class TaskRepository @Inject constructor(
 
     suspend fun applyDecision(taskId: String, decision: UserDecision) {
         val status = when (decision) {
-            UserDecision.DO_NOW -> TaskStatus.IN_PROGRESS.name
+            UserDecision.DO_NOW   -> TaskStatus.IN_PROGRESS.name
             UserDecision.SCHEDULE -> TaskStatus.PENDING.name
             UserDecision.DELEGATE -> TaskStatus.PENDING.name
-            UserDecision.IGNORE -> TaskStatus.IGNORED.name
+            UserDecision.IGNORE   -> TaskStatus.IGNORED.name
         }
         dao.updateDecision(taskId, status, decision.name, System.currentTimeMillis())
     }

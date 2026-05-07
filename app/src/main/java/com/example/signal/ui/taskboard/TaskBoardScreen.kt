@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,18 +19,44 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.signal.data.local.TaskEntity
-import com.example.signal.data.model.TaskStatus
-import com.example.signal.data.model.UserDecision
-import com.example.signal.ui.theme.SignalTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val FILTERS = listOf("All", "Deadlines", "Meetings", "Payments", "Messages")
+// ── Priority helpers ───────────────────────────────────────────────────────────
+
+private val PRIORITY_ORDER = listOf("CRITICAL", "HIGH", "MEDIUM", "LOW")
+
+private fun importanceColor(importance: String) = when (importance) {
+    "CRITICAL" -> Color(0xFFFF4444)
+    "HIGH"     -> Color(0xFFFF8C00)
+    "MEDIUM"   -> Color(0xFF2196F3)
+    else       -> Color(0xFF4CAF50)
+}
+
+private fun importanceEmoji(importance: String) = when (importance) {
+    "CRITICAL" -> "🔴"
+    "HIGH"     -> "🟠"
+    "MEDIUM"   -> "🔵"
+    else       -> "🟢"
+}
+
+private fun categoryEmoji(category: String) = when (category) {
+    "DEADLINE"    -> "⏰"
+    "MEETING"     -> "🤝"
+    "PAYMENT"     -> "💳"
+    "MESSAGE"     -> "💬"
+    "REMINDER"    -> "🔔"
+    "PROMOTIONAL" -> "🏷️"
+    else          -> "📌"
+}
+
+// ── Screen ─────────────────────────────────────────────────────────────────────
 
 @Composable
 fun TaskBoardScreen(viewModel: TaskViewModel = hiltViewModel()) {
@@ -46,40 +73,88 @@ fun TaskBoardScreen(viewModel: TaskViewModel = hiltViewModel()) {
                     .background(Color(0xFF0D0D1A))
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Inbox", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${state.allMessages.size} active",
+                            color = Color.White.copy(alpha = 0.4f),
+                            fontSize = 12.sp
+                        )
+                    }
+                    // Priority summary badges
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val critical = state.allMessages.count { it.importance == "CRITICAL" }
+                        val high     = state.allMessages.count { it.importance == "HIGH" }
+                        if (critical > 0) PriorityBubble(critical, Color(0xFFFF4444), "🔴")
+                        if (high > 0)     PriorityBubble(high,     Color(0xFFFF8C00), "🟠")
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
                 // Search bar
                 OutlinedTextField(
                     value = state.searchQuery,
                     onValueChange = viewModel::setSearchQuery,
-                    placeholder = { Text("Search tasks...", color = Color.White.copy(alpha = 0.4f)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.White.copy(alpha = 0.5f)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Search...", color = Color.White.copy(alpha = 0.4f)) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.5f))
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF6C63FF),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-                        focusedContainerColor = Color(0xFF1A1A2E),
+                        focusedTextColor    = Color.White,
+                        unfocusedTextColor  = Color.White,
+                        focusedBorderColor  = Color(0xFF6C63FF),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
+                        focusedContainerColor   = Color(0xFF1A1A2E),
                         unfocusedContainerColor = Color(0xFF1A1A2E)
                     )
                 )
+
                 Spacer(Modifier.height(8.dp))
-                // Filter chips
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+                // Filter chips — horizontal scroll
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 0.dp)
                 ) {
-                    FILTERS.forEach { filter ->
+                    items(TaskFilter.values()) { filter ->
                         val selected = filter == state.selectedFilter
+                        val count = when (filter) {
+                            TaskFilter.ALL           -> state.allMessages.size
+                            TaskFilter.HIGH_PRIORITY -> state.highPriority.size
+                            TaskFilter.DEADLINES     -> state.deadlines.size
+                            TaskFilter.MEETINGS      -> state.meetings.size
+                            TaskFilter.MESSAGES      -> state.messages.size
+                            TaskFilter.PAYMENTS      -> state.payments.size
+                            TaskFilter.REMINDERS     -> state.reminders.size
+                            TaskFilter.ADVERTS       -> state.adverts.size
+                            TaskFilter.OTHER         -> state.other.size
+                        }
                         FilterChip(
                             selected = selected,
-                            onClick = { viewModel.setFilter(filter) },
-                            label = { Text(filter, fontSize = 12.sp) },
+                            onClick  = { viewModel.setFilter(filter) },
+                            label    = {
+                                Text(
+                                    "${filter.emoji} ${filter.label}${if (count > 0) " ($count)" else ""}",
+                                    fontSize = 11.sp
+                                )
+                            },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Color(0xFF6C63FF),
-                                selectedLabelColor = Color.White,
-                                containerColor = Color(0xFF1A1A2E),
-                                labelColor = Color.White.copy(alpha = 0.7f)
+                                selectedContainerColor = when (filter) {
+                                    TaskFilter.HIGH_PRIORITY -> Color(0xFFFF4444)
+                                    else                     -> Color(0xFF6C63FF)
+                                },
+                                selectedLabelColor   = Color.White,
+                                containerColor       = Color(0xFF1A1A2E),
+                                labelColor           = Color.White.copy(alpha = 0.7f)
                             )
                         )
                     }
@@ -93,78 +168,40 @@ fun TaskBoardScreen(viewModel: TaskViewModel = hiltViewModel()) {
             ) { Icon(Icons.Default.Add, contentDescription = "Add task", tint = Color.White) }
         }
     ) { padding ->
-        val allEmpty = state.overdue.isEmpty() && state.pending.isEmpty() &&
-                       state.inProgress.isEmpty() && state.done.isEmpty()
 
-        if (allEmpty) {
-            EmptyState(modifier = Modifier.padding(padding))
+        val displayList = state.currentList()
+
+        if (displayList.isEmpty() && state.done.isEmpty() && state.selectedFilter != TaskFilter.ALL) {
+            EmptyPartition(
+                filter = state.selectedFilter,
+                modifier = Modifier.padding(padding)
+            )
+        } else if (state.selectedFilter == TaskFilter.ALL) {
+            // ALL tab — show sections: Overdue | Critical&High | In-Progress | Pending | Done
+            AllMessagesView(
+                state       = state,
+                padding     = padding,
+                expandedId  = expandedTaskId,
+                onExpand    = { id -> expandedTaskId = if (expandedTaskId == id) null else id },
+                onMarkDone  = viewModel::markDone
+            )
         } else {
-            LazyColumn(
-                contentPadding = PaddingValues(
-                    start = 16.dp, end = 16.dp,
-                    top = padding.calculateTopPadding() + 8.dp,
-                    bottom = 80.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Overdue section
-                if (state.overdue.isNotEmpty()) {
-                    item { SectionHeader("🔥 CRITICAL & OVERDUE", Color(0xFFFF4444)) }
-                    items(state.overdue, key = { it.id }) { task ->
-                        TaskCard(
-                            task = task,
-                            isExpanded = expandedTaskId == task.id,
-                            onTap = { expandedTaskId = if (expandedTaskId == task.id) null else task.id },
-                            onMarkDone = { viewModel.markDone(task.id) },
-                            isOverdue = true
-                        )
-                    }
-                }
-                // In-progress
-                if (state.inProgress.isNotEmpty()) {
-                    item { SectionHeader("⚡ IN PROGRESS", Color(0xFF2196F3)) }
-                    items(state.inProgress, key = { it.id }) { task ->
-                        TaskCard(
-                            task = task,
-                            isExpanded = expandedTaskId == task.id,
-                            onTap = { expandedTaskId = if (expandedTaskId == task.id) null else task.id },
-                            onMarkDone = { viewModel.markDone(task.id) }
-                        )
-                    }
-                }
-                // Pending
-                if (state.pending.isNotEmpty()) {
-                    item { SectionHeader("📋 PENDING", Color(0xFFFFB300)) }
-                    items(state.pending, key = { it.id }) { task ->
-                        TaskCard(
-                            task = task,
-                            isExpanded = expandedTaskId == task.id,
-                            onTap = { expandedTaskId = if (expandedTaskId == task.id) null else task.id },
-                            onMarkDone = { viewModel.markDone(task.id) }
-                        )
-                    }
-                }
-                // Done
-                if (state.done.isNotEmpty()) {
-                    item { SectionHeader("✅ COMPLETED TODAY", Color(0xFF4CAF50)) }
-                    items(state.done, key = { it.id }) { task ->
-                        TaskCard(
-                            task = task,
-                            isExpanded = expandedTaskId == task.id,
-                            onTap = { expandedTaskId = if (expandedTaskId == task.id) null else task.id },
-                            onMarkDone = { viewModel.markDone(task.id) },
-                            isDone = true
-                        )
-                    }
-                }
-            }
+            // Partition tab — flat priority-sorted list
+            PartitionView(
+                tasks       = displayList,
+                filter      = state.selectedFilter,
+                padding     = padding,
+                expandedId  = expandedTaskId,
+                onExpand    = { id -> expandedTaskId = if (expandedTaskId == id) null else id },
+                onMarkDone  = viewModel::markDone
+            )
         }
     }
 
     if (showAddDialog) {
         AddTaskDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { task ->
+            onAdd     = { task ->
                 viewModel.addManualTask(task)
                 showAddDialog = false
             }
@@ -172,16 +209,180 @@ fun TaskBoardScreen(viewModel: TaskViewModel = hiltViewModel()) {
     }
 }
 
+// ── All Messages tab ──────────────────────────────────────────────────────────
+
 @Composable
-private fun SectionHeader(title: String, color: Color) {
-    Text(
-        text = title,
-        color = color,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 1.sp,
-        modifier = Modifier.padding(vertical = 8.dp)
-    )
+private fun AllMessagesView(
+    state: TaskBoardUiState,
+    padding: PaddingValues,
+    expandedId: String?,
+    onExpand: (String) -> Unit,
+    onMarkDone: (String) -> Unit
+) {
+    val allEmpty = state.overdue.isEmpty() && state.pending.isEmpty() &&
+            state.inProgress.isEmpty() && state.done.isEmpty()
+
+    if (allEmpty) {
+        EmptyState(modifier = Modifier.padding(padding))
+        return
+    }
+
+    val shownIds = mutableSetOf<String>()
+    val overdueTasks = state.overdue
+    shownIds.addAll(overdueTasks.map { it.id })
+
+    val criticalHigh = state.highPriority.filter { !shownIds.contains(it.id) }
+    shownIds.addAll(criticalHigh.map { it.id })
+
+    val inProgressTasks = state.inProgress.filter { !shownIds.contains(it.id) }
+    shownIds.addAll(inProgressTasks.map { it.id })
+
+    val pendingTasks = state.pending.filter { !shownIds.contains(it.id) }
+    shownIds.addAll(pendingTasks.map { it.id })
+
+    val doneTasks = state.done.filter { !shownIds.contains(it.id) }
+
+    LazyColumn(
+        contentPadding = PaddingValues(
+            start = 16.dp, end = 16.dp,
+            top   = padding.calculateTopPadding() + 8.dp,
+            bottom = 80.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (overdueTasks.isNotEmpty()) {
+            val distinctList = overdueTasks.distinctBy { it.id }
+            item { SectionHeader("🔥 OVERDUE", Color(0xFFFF4444), distinctList.size) }
+            items(distinctList, key = { "overdue_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) }, isOverdue = true)
+            }
+        }
+        if (criticalHigh.isNotEmpty()) {
+            val distinctList = criticalHigh.distinctBy { it.id }
+            item { SectionHeader("🔴 HIGH PRIORITY", Color(0xFFFF8C00), distinctList.size) }
+            items(distinctList, key = { "high_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) })
+            }
+        }
+        if (inProgressTasks.isNotEmpty()) {
+            val distinctList = inProgressTasks.distinctBy { it.id }
+            item { SectionHeader("⚡ IN PROGRESS", Color(0xFF2196F3), distinctList.size) }
+            items(distinctList, key = { "inprog_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) })
+            }
+        }
+        if (pendingTasks.isNotEmpty()) {
+            val distinctList = pendingTasks.distinctBy { it.id }
+            item { SectionHeader("📋 PENDING", Color(0xFFFFB300), distinctList.size) }
+            items(distinctList, key = { "pending_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) })
+            }
+        }
+        if (doneTasks.isNotEmpty()) {
+            val distinctList = doneTasks.distinctBy { it.id }
+            item { SectionHeader("✅ COMPLETED TODAY", Color(0xFF4CAF50), distinctList.size) }
+            items(distinctList, key = { "done_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) }, isDone = true)
+            }
+        }
+    }
+}
+
+// ── Partition tab (Deadlines / Meetings / Messages / etc.) ────────────────────
+
+@Composable
+private fun PartitionView(
+    tasks: List<TaskEntity>,
+    filter: TaskFilter,
+    padding: PaddingValues,
+    expandedId: String?,
+    onExpand: (String) -> Unit,
+    onMarkDone: (String) -> Unit
+) {
+    if (tasks.isEmpty()) {
+        EmptyPartition(filter, Modifier.padding(padding))
+        return
+    }
+
+    // Group by priority within the partition
+    val critical = tasks.filter { it.importance == "CRITICAL" }
+    val high     = tasks.filter { it.importance == "HIGH" }
+    val medium   = tasks.filter { it.importance == "MEDIUM" }
+    val low      = tasks.filter { it.importance == "LOW" }
+
+    LazyColumn(
+        contentPadding = PaddingValues(
+            start = 16.dp, end = 16.dp,
+            top   = padding.calculateTopPadding() + 8.dp,
+            bottom = 80.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (critical.isNotEmpty()) {
+            val distinctList = critical.distinctBy { it.id }
+            item { SectionHeader("🔴 CRITICAL", Color(0xFFFF4444), distinctList.size) }
+            items(distinctList, key = { "crit_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) })
+            }
+        }
+        if (high.isNotEmpty()) {
+            val distinctList = high.distinctBy { it.id }
+            item { SectionHeader("🟠 HIGH", Color(0xFFFF8C00), distinctList.size) }
+            items(distinctList, key = { "hi_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) })
+            }
+        }
+        if (medium.isNotEmpty()) {
+            val distinctList = medium.distinctBy { it.id }
+            item { SectionHeader("🔵 MEDIUM", Color(0xFF2196F3), distinctList.size) }
+            items(distinctList, key = { "med_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) })
+            }
+        }
+        if (low.isNotEmpty()) {
+            val distinctList = low.distinctBy { it.id }
+            item { SectionHeader("🟢 LOW", Color(0xFF4CAF50), distinctList.size) }
+            items(distinctList, key = { "low_${it.id}" }) { task ->
+                TaskCard(task, expandedId == task.id, { onExpand(task.id) }, { onMarkDone(task.id) })
+            }
+        }
+    }
+}
+
+// ── Components ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun PriorityBubble(count: Int, color: Color, emoji: String) {
+    Surface(
+        color = color.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.5f))
+    ) {
+        Text(
+            "$emoji $count",
+            color = color,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String, color: Color, count: Int) {
+    Row(
+        modifier = Modifier.padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(title, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Surface(color = color.copy(alpha = 0.15f), shape = RoundedCornerShape(10.dp)) {
+            Text(
+                count.toString(), color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+        }
+    }
 }
 
 @Composable
@@ -196,45 +397,33 @@ private fun TaskCard(
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.4f, targetValue = 1f, label = "alpha",
-        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse)
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse)
     )
 
-    val importanceColor = when (task.importance) {
-        "CRITICAL" -> Color(0xFFFF4444)
-        "HIGH"     -> Color(0xFFFF8C00)
-        "MEDIUM"   -> Color(0xFF2196F3)
-        else       -> Color(0xFF4CAF50)
-    }
+    val impColor  = importanceColor(task.importance)
+    val catEmoji  = categoryEmoji(task.category)
+    val impEmoji  = importanceEmoji(task.importance)
 
-    val categoryEmoji = when (task.category) {
-        "DEADLINE"    -> "⏰"
-        "MEETING"     -> "🤝"
-        "PAYMENT"     -> "💳"
-        "MESSAGE"     -> "💬"
-        "REMINDER"    -> "🔔"
-        "PROMOTIONAL" -> "🏷️"
-        else          -> "📌"
-    }
-
-    val timeRemainingColor = task.deadlineTimestamp?.let { ts ->
+    val deadlineColor = task.deadlineTimestamp?.let { ts ->
         val remaining = ts - System.currentTimeMillis()
         when {
-            remaining < 0                -> Color(0xFFFF4444)
-            remaining < 2 * 3_600_000L   -> Color(0xFFFF4444)
-            remaining < 24 * 3_600_000L  -> Color(0xFFFF8C00)
-            else                         -> Color(0xFF4CAF50)
+            remaining < 0               -> Color(0xFFFF4444)
+            remaining < 2 * 3_600_000L  -> Color(0xFFFF4444)
+            remaining < 24 * 3_600_000L -> Color(0xFFFF8C00)
+            else                        -> Color(0xFF4CAF50)
         }
     }
 
-    val borderColor = if (isOverdue) importanceColor.copy(alpha = pulseAlpha) else importanceColor.copy(alpha = 0.3f)
+    val borderColor = if (isOverdue) impColor.copy(alpha = pulseAlpha)
+                      else           impColor.copy(alpha = 0.3f)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onTap() }
-            .graphicsLayer { alpha = if (isDone) 0.6f else 1f },
+            .graphicsLayer { alpha = if (isDone) 0.55f else 1f },
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
-        shape = RoundedCornerShape(12.dp),
+        shape  = RoundedCornerShape(12.dp),
         border = BorderStroke(1.dp, borderColor)
     ) {
         Column(Modifier.padding(14.dp)) {
@@ -242,73 +431,106 @@ private fun TaskCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Category dot
+                // Category icon circle
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
-                        .background(importanceColor.copy(alpha = 0.15f)),
+                        .background(impColor.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
-                ) { Text(categoryEmoji, fontSize = 16.sp) }
+                ) { Text(catEmoji, fontSize = 17.sp) }
 
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = task.extractedTask,
-                        color = if (isDone) Color.White.copy(alpha = 0.5f) else Color.White,
+                        color = if (isDone) Color.White.copy(alpha = 0.45f) else Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = if (isExpanded) Int.MAX_VALUE else 2
+                        maxLines = if (isExpanded) Int.MAX_VALUE else 2,
+                        textDecoration = if (isDone) TextDecoration.LineThrough else TextDecoration.None
                     )
                     Text(
                         text = task.sourceApp,
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = Color.White.copy(alpha = 0.38f),
                         fontSize = 11.sp
                     )
                 }
 
-                // Importance badge
+                // Priority badge
                 Surface(
-                    color = importanceColor.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(6.dp)
+                    color = impColor.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, impColor.copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = task.importance.take(3),
-                        color = importanceColor,
+                        text = "$impEmoji ${task.importance.take(4)}",
+                        color = impColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                     )
                 }
             }
 
-            // Deadline + time remaining
+            // Deadline row
             task.deadline?.let { dl ->
                 Spacer(Modifier.height(8.dp))
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Schedule, contentDescription = null,
-                        tint = timeRemainingColor ?: Color.White.copy(alpha = 0.4f),
-                        modifier = Modifier.size(14.dp))
-                    Text(text = dl, color = timeRemainingColor ?: Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                    Icon(
+                        Icons.Default.Schedule, null,
+                        tint = deadlineColor ?: Color.White.copy(alpha = 0.4f),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = dl,
+                        color = deadlineColor ?: Color.White.copy(alpha = 0.5f),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            // Meeting calendar tag
+            if (task.category == "MEETING") {
+                Spacer(Modifier.height(6.dp))
+                Surface(
+                    color = Color(0xFF2196F3).copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        "📅 Added to calendar",
+                        color = Color(0xFF2196F3),
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
                 }
             }
 
             // Expanded details
             AnimatedVisibility(visible = isExpanded) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
-                    Divider(color = Color.White.copy(alpha = 0.08f))
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f))
                     Spacer(Modifier.height(8.dp))
-                    Text("Original notification:", color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
+                    Text("Original notification:", color = Color.White.copy(alpha = 0.38f), fontSize = 11.sp)
                     Text(task.originalBody, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                     Spacer(Modifier.height(4.dp))
-                    Text("Captured: ${formatTime(task.capturedAt)}", color = Color.White.copy(alpha = 0.3f), fontSize = 10.sp)
+                    Text(
+                        "Captured: ${formatTime(task.capturedAt)}",
+                        color = Color.White.copy(alpha = 0.28f),
+                        fontSize = 10.sp
+                    )
                     task.userDecision?.let { d ->
-                        Text("Decision: $d", color = Color(0xFF6C63FF), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Decision: $d",
+                            color = Color(0xFF6C63FF),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                     if (!isDone) {
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(10.dp))
                         OutlinedButton(
                             onClick = onMarkDone,
                             border = BorderStroke(1.dp, Color(0xFF4CAF50)),
@@ -336,15 +558,38 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun EmptyPartition(filter: TaskFilter, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(filter.emoji, fontSize = 56.sp)
+            Text(
+                "No ${filter.label}",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                "AI-classified ${filter.label.lowercase()} will appear here",
+                color = Color.White.copy(alpha = 0.45f),
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskEntity) -> Unit) {
-    var title by remember { mutableStateOf("") }
+    var title    by remember { mutableStateOf("") }
     var deadline by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1A1A2E),
-        title = { Text("Add Task Manually", color = Color.White) },
-        text = {
+        containerColor   = Color(0xFF1A1A2E),
+        title  = { Text("Add Task Manually", color = Color.White) },
+        text   = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = title,
@@ -352,8 +597,10 @@ private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskEntity) -> Unit) {
                     label = { Text("Task description", color = Color.White.copy(alpha = 0.5f)) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF6C63FF), unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
+                        focusedTextColor   = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFF6C63FF),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
                     )
                 )
                 OutlinedTextField(
@@ -362,8 +609,10 @@ private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskEntity) -> Unit) {
                     label = { Text("Deadline (optional)", color = Color.White.copy(alpha = 0.5f)) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF6C63FF), unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
+                        focusedTextColor   = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFF6C63FF),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
                     )
                 )
             }
