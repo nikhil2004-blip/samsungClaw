@@ -20,5 +20,6 @@ local.properties
 *.log
 *.jks
 *.keystore
-*.apk
+!apk/*.apk
 *.aab
+*.idsig
