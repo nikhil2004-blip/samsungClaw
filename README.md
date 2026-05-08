@@ -24,7 +24,7 @@ All requested resources for the evaluation process are available below:
 
 
  - 🎬 **Project Video Demo:** [Watch Demo](https://youtu.be/JWNi0HDFNGo?si=ajelExAzaxnUt3ek) *(YouTube demo)*
- - 📊 **PPT Presentation:** [Open presentation (GitHub file)](MSRIT_BBBY.pptx) · [Download PPT](MSRIT_BBBY.pptx?raw=true) *(Presentation: MSRIT_BBBY.pptx — in repository root)*
+ - 📊 **PPT Presentation:** [Open presentation (GitHub file)](https://github.com/nikhil2004-blip/samsungClaw/blob/master/MSRIT_BBBY.pptx) · [Download PPT](https://raw.githubusercontent.com/nikhil2004-blip/samsungClaw/master/MSRIT_BBBY.pptx) *(Presentation: MSRIT_BBBY.pptx — in repository root)*
 - 📦 **Demo APK & Install Instructions:** [Download Demo APK and install instructions](docs/APK_INSTALL.md)
 - 🤖 **AI Disclosure:** [Read Full AI Disclosure (AIDISCLOSURE.md)](AIDISCLOSURE.md)
 - 💻 **Complete Source Code:** Included in this repository.
