@@ -28,7 +28,14 @@ android {
             localProperties.load(FileInputStream(localPropertiesFile))
         }
         val groqApiKey = localProperties.getProperty("GROQ_API_KEY") ?: ""
-        buildConfigField("String", "GROQ_API_KEY", "\"$groqApiKey\"")
+        val groqApiKeys = localProperties.getProperty("GROQ_API_KEYS") ?: ""
+        val escapeForBuildConfig = { value: String ->
+            value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+        }
+        buildConfigField("String", "GROQ_API_KEY", "\"${escapeForBuildConfig(groqApiKey)}\"")
+        buildConfigField("String", "GROQ_API_KEYS", "\"${escapeForBuildConfig(groqApiKeys)}\"")
     }
 
     buildTypes {

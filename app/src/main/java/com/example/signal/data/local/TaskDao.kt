@@ -49,10 +49,10 @@ interface TaskDao {
     """)
     fun getAllTasksSortedByPriority(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE status = 'PENDING' ORDER BY CASE WHEN deadlineTimestamp IS NULL THEN 1 ELSE 0 END, deadlineTimestamp ASC")
+    @Query("SELECT * FROM tasks WHERE status = 'PENDING' ORDER BY CASE WHEN deadlineTimestamp IS NULL THEN 1 ELSE 0 END, deadlineTimestamp ASC, capturedAt DESC")
     fun getPendingTasks(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE status = 'IN_PROGRESS' ORDER BY CASE WHEN deadlineTimestamp IS NULL THEN 1 ELSE 0 END, deadlineTimestamp ASC")
+    @Query("SELECT * FROM tasks WHERE status = 'IN_PROGRESS' ORDER BY CASE WHEN deadlineTimestamp IS NULL THEN 1 ELSE 0 END, deadlineTimestamp ASC, capturedAt DESC")
     fun getInProgressTasks(): Flow<List<TaskEntity>>
 
     @Query("SELECT * FROM tasks WHERE status = 'DONE' ORDER BY completedAt DESC")
@@ -96,10 +96,10 @@ interface TaskDao {
     suspend fun getTasksThisWeek(startOfWeek: Long): List<TaskEntity>
 
     @Query("""
-        SELECT category, COUNT(*) as cnt FROM tasks 
-        WHERE userDecision = 'IGNORE' 
-        GROUP BY category 
-        ORDER BY cnt DESC 
+        SELECT category, COUNT(*) as cnt FROM tasks
+        WHERE userDecision = 'IGNORE'
+        GROUP BY category
+        ORDER BY cnt DESC
         LIMIT 3
     """)
     suspend fun getTopIgnoredCategories(): List<CategoryCount>
@@ -137,8 +137,8 @@ interface TaskDao {
     suspend fun clearAll()
 
     @Query("""
-        UPDATE tasks 
-        SET importance = CASE 
+        UPDATE tasks
+        SET importance = CASE
             WHEN deadlineTimestamp < :now + 86400000 THEN 'CRITICAL'
             WHEN deadlineTimestamp < :now + 259200000 THEN 'HIGH'
             WHEN deadlineTimestamp < :now + 604800000 THEN 'MEDIUM'

@@ -254,6 +254,8 @@ Open `local.properties` and set:
 ```properties
 sdk.dir=/path/to/your/Android/sdk
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Optional key pool for rotation (comma-separated)
+GROQ_API_KEYS=gsk_key_1,gsk_key_2,gsk_key_3
 ```
 
 > **Never commit `local.properties`.** It is already listed in `.gitignore`.
