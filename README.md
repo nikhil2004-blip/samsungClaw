@@ -24,7 +24,7 @@ All requested resources for the evaluation process are available below:
 
 
  - 🎬 **Project Video Demo:** [Watch Demo](https://youtu.be/JWNi0HDFNGo?si=ajelExAzaxnUt3ek) *(YouTube demo)*
- - 📊 **PPT Presentation:** <a href="docs/demo.pptx"></a> [View Slides](docs/demo.pptx) *(Presentation: docs/demo.pptx)*
+ - 📊 **PPT Presentation:** <a href="MSRIT_BBBY.pptx"><img src="image.png" width="320" alt="Presentation thumbnail" /></a> [View Slides](MSRIT_BBBY.pptx) *(Presentation: MSRIT_BBBY.pptx)*
 - 📦 **Demo APK & Install Instructions:** [Download Demo APK and install instructions](docs/APK_INSTALL.md)
 - 🤖 **AI Disclosure:** [Read Full AI Disclosure (AIDISCLOSURE.md)](AIDISCLOSURE.md)
 - 💻 **Complete Source Code:** Included in this repository.
