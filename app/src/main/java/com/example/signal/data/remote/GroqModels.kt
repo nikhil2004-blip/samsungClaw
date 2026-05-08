@@ -8,7 +8,7 @@ data class GroqRequest(
     @SerializedName("model") val model: String,
     @SerializedName("messages") val messages: List<GroqMessage>,
     @SerializedName("temperature") val temperature: Double = 0.1,
-    @SerializedName("max_tokens") val maxTokens: Int = 300
+    @SerializedName("max_tokens") val maxTokens: Int = 120
 )
 
 data class GroqMessage(

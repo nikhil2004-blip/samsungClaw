@@ -119,3 +119,8 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
+
+tasks.matching { it.name.startsWith("generate") && it.name.endsWith("BuildConfig") }
+    .configureEach {
+        inputs.file(rootProject.file("local.properties"))
+    }

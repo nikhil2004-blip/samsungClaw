@@ -42,7 +42,21 @@ object NetworkModule {
                 val shouldRetryRateLimit =
                     response.code == 429 && key != null && attempt < maxAttempts - 1
                 if (shouldRetryRateLimit) {
-                    keyPool.markRateLimited(key)
+                    val retryAfterMs = (response.header("retry-after")
+                        ?.toLongOrNull()
+                        ?.coerceAtLeast(1L)
+                        ?.times(1000L)) ?: KEY_COOLDOWN_MS
+
+                    val shouldNotRetry = response.header("x-should-retry")
+                        ?.equals("false", ignoreCase = true) == true
+
+                    val cooldownMs = if (shouldNotRetry) {
+                        maxOf(retryAfterMs, 10 * 60 * 1000L)
+                    } else {
+                        retryAfterMs
+                    }
+
+                    keyPool.markRateLimited(key, cooldownMs)
                     response.close()
                     attempt++
                     continue
@@ -136,9 +150,9 @@ object NetworkModule {
             null
         }
 
-        fun markRateLimited(key: String) = synchronized(this) {
+        fun markRateLimited(key: String, cooldownMs: Long = KEY_COOLDOWN_MS) = synchronized(this) {
             val now = System.currentTimeMillis()
-            val nextAllowed = now + KEY_COOLDOWN_MS
+            val nextAllowed = now + cooldownMs.coerceAtLeast(1L)
             val existing = cooldownUntilMs[key] ?: 0L
             cooldownUntilMs[key] = maxOf(existing, nextAllowed)
         }
