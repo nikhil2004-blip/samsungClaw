@@ -23,6 +23,7 @@
 All requested resources for the evaluation process are available below:
 
 - 🎬 **Project Video Demo:** [Watch Demo](#) *(Insert Link Here)*
+ - 🎬 **Project Video Demo:** [Watch Demo](https://youtu.be/JWNi0HDFNGo?si=ajelExAzaxnUt3ek) *(YouTube demo)*
 - 📊 **PPT Presentation:** [View Slides](#) *(Insert Link or see `/docs` folder)*
 - 📦 **Demo APK & Install Instructions:** [Download Demo APK and install instructions](docs/APK_INSTALL.md)
 - 🤖 **AI Disclosure:** [Read Full AI Disclosure (AIDISCLOSURE.md)](AIDISCLOSURE.md)
