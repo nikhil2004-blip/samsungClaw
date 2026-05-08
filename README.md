@@ -24,7 +24,7 @@ All requested resources for the evaluation process are available below:
 
 - 🎬 **Project Video Demo:** [Watch Demo](#) *(Insert Link Here)*
 - 📊 **PPT Presentation:** [View Slides](#) *(Insert Link or see `/docs` folder)*
-- 📦 **Demo APK:** [Download Demo APK (app-release.apk)](https://raw.githubusercontent.com/nikhil2004-blip/samsungClaw/master/apk/app-release.apk)
+- 📦 **Demo APK & Install Instructions:** [Download Demo APK and install instructions](docs/APK_INSTALL.md)
 - 🤖 **AI Disclosure:** [Read Full AI Disclosure (AIDISCLOSURE.md)](AIDISCLOSURE.md)
 - 💻 **Complete Source Code:** Included in this repository.
 
